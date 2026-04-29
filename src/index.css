@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+:root {
+  --bg-color: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
+  --text-color: #111827;
+  --button-bg: #f3f4f6;
+  --button-text: #111827;
+}
+
+.dark {
+  --bg-color: radial-gradient(circle at top left, #064e3b 0%, #111827 40%, #020617 100%);
+  --text-color: #f9fafb;
+  --button-bg: #1f2937;
+  --button-text: #f9fafb;
+  color-scheme: dark;
+}
+
+/* Force clear Vite's default template centering and alignment */
+#root {
+  display: block;
+  text-align: left;
+}
+
+/* Modern Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+}

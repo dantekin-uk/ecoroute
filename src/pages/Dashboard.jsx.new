@@ -1,0 +1,207 @@
+import { useEffect, useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import DashboardLayout from '../layouts/DashboardLayout';
+
+function Dashboard() {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserData(userDoc.data());
+          }
+        } else {
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-full p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
+                Welcome back, {userData?.displayName || 'User'}
+              </h1>
+              <p className="text-gray-400 mt-1">Here's what's happening with your account today.</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                />
+              </svg>
+              Sign out
+            </button>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {/* Stats Card 1 */}
+            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
+              <div className="flex items-center">
+                <div className="p-3 rounded-lg bg-emerald-500/10">
+                  <svg 
+                    className="h-6 w-6 text-emerald-400" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" 
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-300">Total Projects</h3>
+                  <p className="text-2xl font-bold text-white">3</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Card 2 */}
+            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
+              <div className="flex items-center">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <svg 
+                    className="h-6 w-6 text-blue-400" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" 
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-300">Team Members</h3>
+                  <p className="text-2xl font-bold text-white">8</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Card 3 */}
+            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
+              <div className="flex items-center">
+                <div className="p-3 rounded-lg bg-purple-500/10">
+                  <svg 
+                    className="h-6 w-6 text-purple-400" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-300">Tasks Completed</h3>
+                  <p className="text-2xl font-bold text-white">24</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+              <button className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+                View All
+              </button>
+            </div>
+            <div className="space-y-4">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="flex items-start p-4 hover:bg-gray-700/30 rounded-lg transition-colors">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <svg 
+                      className="h-5 w-5 text-emerald-400" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <p className="text-sm font-medium text-white">Task {item} completed</p>
+                    <p className="text-sm text-gray-400">2 hours ago</p>
+                  </div>
+                  <button className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+                    View
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export default Dashboard;

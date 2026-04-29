@@ -1,0 +1,104 @@
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  FiHome, 
+  FiBarChart2, 
+  FiDollarSign,
+  FiPocket,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiCreditCard
+} from 'react-icons/fi';
+
+const Sidebar = ({ isOpen, onClose }) => {
+  const location = useLocation();
+
+  const navigation = [
+    { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: FiHome },
+    { id: 'transactions', name: 'Transactions', href: '/transactions', icon: FiDollarSign },
+    { id: 'income', name: 'Income', href: '/income', icon: FiTrendingUp },
+    { id: 'expenses', name: 'Expenses', href: '/expenses', icon: FiTrendingDown },
+    { id: 'budgets', name: 'Budgets', href: '/budgets', icon: FiPocket },
+    { id: 'reports', name: 'Reports', href: '/reports', icon: FiBarChart2 },
+    { id: 'accounts', name: 'Accounts', href: '/accounts', icon: FiCreditCard },
+  ];
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (isOpen && e.target.closest('.sidebar') === null) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <>
+      {/* Overlay for mobile */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 z-20 transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        } md:hidden`}
+        onClick={onClose}
+      />
+
+      {/* Sidebar */}
+      <div 
+        className="fixed inset-y-0 left-0 w-16 bg-white dark:bg-gray-900 shadow-lg z-30 transition-transform duration-300 ease-in-out transform md:translate-x-0 sidebar"
+        style={{
+          transform: isOpen ? 'translateX(0)' : '-translateX(100%)',
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
+        <div className="flex flex-col h-full">
+          {/* Navigation */}
+          <nav className="flex-1 py-4">
+            <div className="flex flex-col items-center space-y-2 px-1">
+              {navigation.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.href}
+                    className={`flex flex-col items-center p-2 w-12 rounded-lg transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-gray-800 dark:text-emerald-400'
+                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                    }`}
+                    onClick={onClose}
+                    title={item.name}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-xs mt-1 text-center">
+                      {isActive ? item.name : ''}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+
+        {/* Hide scrollbar for all browsers */}
+        <style jsx global>{`
+          .sidebar::-webkit-scrollbar {
+            display: none;
+          }
+          body {
+            overflow-x: hidden;
+          }
+          ::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+      </div>
+    </>
+  );
+};
+
+export default Sidebar;
