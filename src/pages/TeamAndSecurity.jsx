@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Plus, MessageSquare } from 'lucide-react';
+import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Plus, MessageSquare, Key, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
 import { supabase } from '../supabase';
@@ -156,6 +156,27 @@ const TeamAndSecurity = () => {
       alert(`Error creating collector: ${err.message}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPin = async (collector) => {
+    const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+    if (window.confirm(`Are you sure you want to reset the PIN for ${collector.name}? A new 4-digit PIN will be generated.`)) {
+      try {
+        const { error } = await supabase
+          .from('collectors')
+          .update({ 
+            pin: newPin,
+            status: 'Pending First Login' // Reset status so they have to login again
+          })
+          .eq('id', collector.id);
+
+        if (error) throw error;
+        alert(`New PIN for ${collector.name} is: ${newPin}. Please share this with them.`);
+        fetchCollectorsAndEstates();
+      } catch (err) {
+        alert(`Error resetting PIN: ${err.message}`);
+      }
     }
   };
 
@@ -354,6 +375,7 @@ const TeamAndSecurity = () => {
                 <th className="py-4 px-6 font-semibold">Name</th>
                 <th className="py-4 px-6 font-semibold">Phone Number</th>
                 <th className="py-4 px-6 font-semibold">Assigned Route</th>
+                <th className="py-4 px-6 font-semibold">Access PIN</th>
                 <th className="py-4 px-6 font-semibold">App Status</th>
                 <th className="py-4 px-6 font-semibold text-right">Actions</th>
               </tr>
@@ -368,6 +390,13 @@ const TeamAndSecurity = () => {
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap text-gray-600 dark:text-gray-400">{collector.route}</td>
                   <td className="py-4 px-6 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono text-sm font-bold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                        {collector.pin}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
                       collector.status === 'Active Now' 
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' 
@@ -380,21 +409,31 @@ const TeamAndSecurity = () => {
                     </span>
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap text-right">
-                    <button
-                      onClick={async () => {
-                        if (window.confirm(`Are you sure you want to permanently delete collector ${collector.name}?`)) {
-                          try {
-                            const { error } = await supabase.from('collectors').delete().eq('id', collector.id);
-                            if (error) throw error;
-                          } catch (err) {
-                            alert(`Error deleting collector: ${err.message}`);
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleResetPin(collector)}
+                        className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-500/30 flex items-center gap-1.5"
+                        title="Reset PIN"
+                      >
+                        <RefreshCcw className="w-3.5 h-3.5" />
+                        Reset PIN
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to permanently delete collector ${collector.name}?`)) {
+                            try {
+                              const { error } = await supabase.from('collectors').delete().eq('id', collector.id);
+                              if (error) throw error;
+                            } catch (err) {
+                              alert(`Error deleting collector: ${err.message}`);
+                            }
                           }
-                        }
-                      }}
-                      className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-500/30"
-                    >
-                      Delete
-                    </button>
+                        }}
+                        className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-500/30"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
