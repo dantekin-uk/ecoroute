@@ -14,8 +14,7 @@ const MobileCollectorGrid = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showIssueMenu, setShowIssueMenu] = useState(false);
   const [allCollectors, setAllCollectors] = useState([]);
-  const [selectedAdminCollector, setSelectedAdminCollector] = useState('Admin'); // Admin can choose who they are logging as
-
+  
   // Check if this is a dedicated field agent (logged in via /collector-login)
   const collectorAuthStr = localStorage.getItem('collector_auth');
   const collectorAuth = collectorAuthStr ? JSON.parse(collectorAuthStr) : null;
@@ -24,7 +23,21 @@ const MobileCollectorGrid = () => {
   const isDedicatedCollector = !isAdmin && !!collectorAuth;
   
   // Determine the name to log transactions under
+  const [selectedAdminCollector, setSelectedAdminCollector] = useState('Admin'); 
   const collectorName = isDedicatedCollector ? collectorAuth.name : selectedAdminCollector;
+
+  // Sync Admin's "Logging as" with the selected estate's assigned collector
+  useEffect(() => {
+    if (isAdmin && activeEstate && allCollectors.length > 0) {
+      // Find the collector assigned to this estate
+      const assignedCollector = allCollectors.find(c => c.assigned_estate === activeEstate.id);
+      if (assignedCollector) {
+        setSelectedAdminCollector(assignedCollector.name);
+      } else {
+        setSelectedAdminCollector('Admin');
+      }
+    }
+  }, [isAdmin, activeEstate, allCollectors]);
 
   useEffect(() => {
     if (!isDedicatedCollector && !isAdmin) {
@@ -38,9 +51,9 @@ const MobileCollectorGrid = () => {
     // If Admin, fetch all collectors so they can masquerade as them
     if (isAdmin) {
       const fetchCollectors = async () => {
-        const { data } = await supabase.from('collectors').select('name');
+        const { data } = await supabase.from('collectors').select('name, assigned_estate');
         if (data) {
-          setAllCollectors([{ name: 'Admin' }, ...data]);
+          setAllCollectors([{ name: 'Admin', assigned_estate: null }, ...data]);
         }
       };
       fetchCollectors();
@@ -64,15 +77,20 @@ const MobileCollectorGrid = () => {
       if (estatesError) throw estatesError;
 
       let estatesData = rawEstatesData;
-      if (isDedicatedCollector && collectorAuth.assigned_estates) {
-        // Filter strictly to what the collector is assigned to
-        estatesData = rawEstatesData.filter(e => 
-          collectorAuth.assigned_estates.includes(e.id) || 
-          collectorAuth.assigned_estates.includes(e.name.toLowerCase())
-        );
-        // Fallback if none match
-        if (estatesData.length === 0 && rawEstatesData.length > 0) {
-          estatesData = [rawEstatesData[0]]; 
+      if (isDedicatedCollector) {
+        // Find the collector's assignment from the database to be 100% sure
+        const { data: collectorDb } = await supabase
+          .from('collectors')
+          .select('assigned_estate')
+          .eq('id', collectorAuth.id)
+          .single();
+
+        if (collectorDb && collectorDb.assigned_estate) {
+          // Strictly filter to ONLY this one estate
+          estatesData = rawEstatesData.filter(e => e.id === collectorDb.assigned_estate);
+        } else {
+          // If for some reason they have no assignment, show nothing for security
+          estatesData = [];
         }
       }
 
