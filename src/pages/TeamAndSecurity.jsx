@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Plus, MessageSquare, Key, RefreshCcw } from 'lucide-react';
+import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Plus, MessageSquare, Key, RefreshCcw, Trash2, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
 import { supabase } from '../supabase';
@@ -13,6 +13,7 @@ const TeamAndSecurity = () => {
   const [collectors, setCollectors] = useState([]);
   const [estates, setEstates] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [smsStatus, setSmsStatus] = useState({ id: null, loading: false, success: false, error: null });
 
   useEffect(() => {
     fetchIncidents();
@@ -86,9 +87,64 @@ const TeamAndSecurity = () => {
     }
   };
 
-  const handleBlastSMS = (incident) => {
-    // In a real app, this would trigger an API call to a service like Twilio/Africa's Talking
-    alert(`SMS Blast sent to Tenant at ${incident.estate_name}, House ${incident.house_number}: "Please note our collector ${incident.collector_name} is trying to reach you regarding an issue (${incident.payment_method.replace('Incident: ', '')})."`);
+  const handleBlastSMS = async (incident) => {
+    setSmsStatus({ id: incident.id, loading: true, success: false, error: null });
+    
+    try {
+      // 1. Find the estate ID first
+      const { data: estateData } = await supabase.from('estates').select('id').eq('name', incident.estate_name).single();
+      
+      if (!estateData) throw new Error('Estate not found');
+
+      // 2. Find the tenant and their phone number
+      const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id);
+      
+      const tenant = tenants?.find(t => {
+        const hId = t.door_number ? `${t.block_number}-${t.door_number}` : t.block_number;
+        return hId === incident.house_number;
+      });
+
+      if (!tenant || !tenant.phone_number) {
+        throw new Error('Tenant phone number not found in database');
+      }
+
+      // Mocking the SMS API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      console.log(`SMS Sent to ${tenant.phone_number}: Alert regarding Door ${incident.house_number}`);
+      setSmsStatus({ id: incident.id, loading: false, success: true, error: null });
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSmsStatus({ id: null, loading: false, success: false, error: null }), 3000);
+
+    } catch (err) {
+      console.error('SMS Error:', err);
+      setSmsStatus({ id: incident.id, loading: false, success: false, error: err.message });
+      // Clear error after 4 seconds
+      setTimeout(() => setSmsStatus({ id: null, loading: false, success: false, error: null }), 4000);
+    }
+  };
+
+  const handleResolveIncident = async (id) => {
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
+      fetchIncidents();
+    } catch (err) {
+      alert(`Error resolving incident: ${err.message}`);
+    }
+  };
+
+  const handleClearAllIncidents = async () => {
+    if (!window.confirm('Are you sure you want to clear ALL live incidents? This cannot be undone.')) return;
+    try {
+      const ids = incidents.map(i => i.id);
+      const { error } = await supabase.from('transactions').delete().in('id', ids);
+      if (error) throw error;
+      fetchIncidents();
+    } catch (err) {
+      alert(`Error clearing incidents: ${err.message}`);
+    }
   };
 
   // Calculate stats from real data
@@ -243,49 +299,117 @@ const TeamAndSecurity = () => {
       {/* Live Incident Feed */}
       <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl shadow-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-gray-200/60 dark:border-white/10 flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Live Incident Feed
-          </h2>
-          <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-500/20">
-            {incidents.length} Open
-          </span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Live Incident Feed
+            </h2>
+            <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-500/20">
+              {incidents.length} Open
+            </span>
+          </div>
+          {incidents.length > 0 && (
+            <button 
+              onClick={handleClearAllIncidents}
+              className="flex items-center gap-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-rose-200 dark:hover:border-rose-500/30"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear All
+            </button>
+          )}
         </div>
-        <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
+        <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-2">
           {incidents.length > 0 ? (
-            <div className="space-y-2 p-3">
+            <div className="space-y-3 p-3">
               {incidents.map((incident) => {
                 const issueText = incident.payment_method.replace('Incident: ', '');
+                const isThisSms = smsStatus.id === incident.id;
+                
                 return (
-                  <div key={incident.id} className="bg-gray-50 dark:bg-[#1E293B]/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1 p-2 bg-amber-100 dark:bg-amber-500/20 rounded-full border border-amber-200 dark:border-amber-500/30">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                  <div key={incident.id} className="bg-gray-50 dark:bg-[#1E293B]/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-all hover:shadow-md">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-1 p-2.5 bg-amber-100 dark:bg-amber-500/20 rounded-xl border border-amber-200 dark:border-amber-500/30">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-900 dark:text-white font-medium">
-                          <span className="font-bold text-amber-600 dark:text-amber-500">Alert:</span> {incident.collector_name} cannot access <span className="font-bold">Door {incident.house_number}</span> at {incident.estate_name}
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-900 dark:text-white font-medium leading-relaxed">
+                          <span className="font-bold text-amber-600 dark:text-amber-500">Alert:</span> {incident.collector_name} reported <span className="font-bold">Door {incident.house_number}</span> at {incident.estate_name}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-semibold flex items-center gap-1.5">
-                          <span className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">Reason: {issueText}</span>
-                          • {new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-wider">Reason: {issueText}</span>
+                          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1">
+                            <Activity className="w-3 h-3" />
+                            {new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => handleBlastSMS(incident)}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-[#0B0F19] border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm whitespace-nowrap"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      Blast SMS to Tenant
-                    </button>
+
+                    <div className="flex items-center gap-2 w-full lg:w-auto">
+                      <div className="relative flex-1 lg:flex-none">
+                        <button 
+                          disabled={smsStatus.loading}
+                          onClick={() => handleBlastSMS(incident)}
+                          className={`w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm whitespace-nowrap border ${
+                            smsStatus.success && isThisSms
+                              ? 'bg-emerald-500 text-white border-emerald-400'
+                              : smsStatus.error && isThisSms
+                              ? 'bg-rose-500 text-white border-rose-400'
+                              : 'bg-white dark:bg-[#0B0F19] border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {smsStatus.loading && isThisSms ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : smsStatus.success && isThisSms ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              SMS Sent!
+                            </>
+                          ) : smsStatus.error && isThisSms ? (
+                            <>
+                              <AlertTriangle className="w-4 h-4" />
+                              Failed
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-4 h-4" />
+                              Blast SMS
+                            </>
+                          )}
+                        </button>
+                        
+                        {smsStatus.error && isThisSms && (
+                          <div className="absolute top-full left-0 right-0 mt-2 z-10">
+                            <div className="bg-rose-500 text-white text-[10px] p-2 rounded-lg shadow-xl font-bold text-center animate-bounce">
+                              {smsStatus.error}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => handleResolveIncident(incident.id)}
+                        className="flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
+                        title="Mark as Resolved"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Resolve
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-              No open incidents at this time.
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                <Check className="w-8 h-8 text-emerald-500" />
+              </div>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">All clear!</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">No open incidents at this time.</p>
             </div>
           )}
         </div>
