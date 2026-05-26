@@ -16,8 +16,15 @@ function SignUp() {
   const [redirecting, setRedirecting] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const { activePalette } = useTheme();
+  const { signup, currentUser } = useAuth();
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const handleSignUp = async (e) => {
     e.preventDefault()
@@ -41,18 +48,7 @@ function SignUp() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            displayName: fullName,
-          }
-        }
-      });
-      
-      if (error) throw error;
-
+      await signup(email, password);
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);

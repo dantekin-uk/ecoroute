@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { useAuth } from '../context/useAuth';
 
 import { useTheme } from '../context/useTheme';
 import { FiArrowRight, FiLoader } from 'react-icons/fi';
@@ -16,18 +15,16 @@ function Login() {
   const [redirecting, setRedirecting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const { activePalette } = useTheme();
+  const { currentUser, login } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsMounted(true);
     // Check if user is already logged in and redirect
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate('/dashboard');
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -41,9 +38,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      
+      await login(email, password);
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);
