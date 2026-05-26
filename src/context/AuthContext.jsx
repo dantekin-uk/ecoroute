@@ -7,7 +7,13 @@ export default function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   function signup(email, password) {
-    return supabase.auth.signUp({ email, password });
+    return supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: window.location.origin + '/dashboard'
+      }
+    });
   }
 
   function login(email, password) {
