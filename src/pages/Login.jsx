@@ -101,7 +101,7 @@ function Login() {
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleLogin} className="space-y-6" autoComplete="off">
                 {/* Email Field */}
                 <div className="space-y-1.5">
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-left">
@@ -109,7 +109,9 @@ function Login() {
                   </label>
                   <input
                     id="email"
+                    name="email"
                     type="email"
+                    autoComplete="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={`block w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 ${activePalette.focusRing} focus:border-transparent transition-all duration-200 text-sm`}
@@ -136,7 +138,9 @@ function Login() {
                   </div>
                   <input
                     id="password"
+                    name="password"
                     type="password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`block w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 ${activePalette.focusRing} focus:border-transparent transition-all duration-200 text-sm`}
