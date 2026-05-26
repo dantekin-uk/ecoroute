@@ -72,27 +72,14 @@ const StatsSection = () => {
           subtitle="View expenses →"
         />
       </Link>
-      <Link to="/inventory" className="block min-w-0 h-full">
-        <StatsCard
-          compact
-          title="Low Stock"
-          value={String(stats.lowStockCount)}
-          icon={<Package size={20} strokeWidth={1.5} />}
-          colorScheme={stats.lowStockCount > 0 ? 'main-purple' : 'main-green'}
-          subtitle={stats.lowStockCount > 0 ? 'Reorder needed →' : 'Stock OK →'}
-        />
-      </Link>
-
-      <div className="col-span-2 lg:col-span-1">
-        <StatsCard
-          compact
-          title="Net Margin"
-          value={`Ksh ${stats.netProfit.toLocaleString()}`}
-          icon={<TrendingUp size={20} strokeWidth={1.5} />}
-          colorScheme={netPositive ? 'main-green' : 'main-purple'}
-          subtitle={netPositive ? 'Revenue ahead' : 'Costs exceed revenue'}
-        />
-      </div>
+      <StatsCard
+        compact
+        title="Net Margin"
+        value={`Ksh ${stats.netProfit.toLocaleString()}`}
+        icon={<TrendingUp size={20} strokeWidth={1.5} />}
+        colorScheme={netPositive ? 'main-green' : 'main-purple'}
+        subtitle={netPositive ? 'Revenue ahead' : 'Costs exceed revenue'}
+      />
     </div>
   );
 };
