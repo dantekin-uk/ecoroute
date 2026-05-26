@@ -116,8 +116,8 @@ const CollectionRateChart = () => {
         </div>
 
         {/* Radial Progress Ring */}
-        <div className="h-52 w-full flex items-center justify-center min-h-[208px]">
-          <div className="w-full max-w-[240px] aspect-square relative">
+        <div className="h-52 sm:h-64 w-full flex items-center justify-center min-h-[208px]">
+          <div className="w-full max-w-[240px] sm:max-w-[280px] aspect-square relative">
             <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={200}>
               <PieChart>
                 <Pie

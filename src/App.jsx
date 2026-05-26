@@ -21,7 +21,7 @@ const AuthenticatedLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen transition-colors duration-300">
+    <div className="fixed inset-0 flex transition-colors duration-300 overflow-hidden">
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
