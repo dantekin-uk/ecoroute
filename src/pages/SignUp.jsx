@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { supabase } from '../supabase';
  
 import { useTheme } from '../context/useTheme';
 import { FiMail, FiLock, FiUser, FiArrowRight, FiLoader } from 'react-icons/fi';
@@ -43,33 +41,23 @@ function SignUp() {
     setLoading(true)
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      
-      await updateProfile(userCredential.user, {
-        displayName: fullName,
-      })
-
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        uid: userCredential.user.uid,
-        displayName: fullName,
-        email: email,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            displayName: fullName,
+          }
+        }
       });
+      
+      if (error) throw error;
 
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      if (err.code === 'auth/email-already-in-use') {
-        setError('An account with this email already exists. Please use a different email or log in.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('The email address is not valid.');
-      } else if (err.code === 'auth/weak-password') {
-        setError('The password is too weak. Please use a stronger password.');
-      } else {
-        setError(err.message || 'An error occurred during sign up. Please try again.');
-      }
+      setError(err.message || 'An error occurred during sign up. Please try again.');
       console.error('Signup error:', err);
     } finally {
       if (!redirecting) {

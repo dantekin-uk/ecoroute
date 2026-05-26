@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  sendPasswordResetEmail
-} from 'firebase/auth';
-import { auth } from '../firebase';
-
+import { supabase } from '../supabase';
 import { AuthContext } from './AuthContextBase.js';
 
 export default function AuthProvider({ children }) {
@@ -17,48 +7,50 @@ export default function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   function signup(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
+    return supabase.auth.signUp({ email, password });
   }
 
   function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
-  }
-
-  function loginWithGoogle() {
-    const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    return supabase.auth.signInWithPassword({ email, password });
   }
 
   function logout() {
-    return signOut(auth);
+    return supabase.auth.signOut();
   }
 
   function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
+    return supabase.auth.resetPasswordForEmail(email);
   }
 
   function updateEmail(email) {
-    return currentUser.updateEmail(email);
+    return supabase.auth.updateUser({ email });
   }
 
   function updatePassword(password) {
-    return currentUser.updatePassword(password);
+    return supabase.auth.updateUser({ password });
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user || null);
       setLoading(false);
     });
 
-    return unsubscribe;
+    getCurrentUser();
+    
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function getCurrentUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+    setLoading(false);
+  }
 
   const value = {
     currentUser,
     signup,
     login,
-    loginWithGoogle,
     logout,
     resetPassword,
     updateEmail,

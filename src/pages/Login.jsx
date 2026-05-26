@@ -21,12 +21,12 @@ function Login() {
   useEffect(() => {
     setIsMounted(true);
     // Check if user is already logged in and redirect
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         navigate('/dashboard');
       }
     });
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleLogin = async (e) => {
@@ -41,20 +41,14 @@ function Login() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Invalid email or password. Please try again.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many failed login attempts. Please try again later or reset your password.');
-      } else if (err.code === 'auth/user-disabled') {
-        setError('This account has been disabled. Please contact support.');
-      } else {
-        setError(err.message || 'An error occurred during login. Please try again.');
-      }
+      setError(err.message || 'An error occurred during login. Please try again.');
       console.error('Login error:', err);
     } finally {
       if (!redirecting) {
