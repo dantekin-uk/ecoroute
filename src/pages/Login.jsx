@@ -2,18 +2,20 @@ import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 
-import { useTheme } from '../context/useTheme'; // Import useTheme
+import { useTheme } from '../context/useTheme';
 import { FiArrowRight, FiLoader } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import LoadingScreen from '../components/LoadingScreen';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { activePalette } = useTheme(); // Get activePalette
+  const { activePalette } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,7 +33,6 @@ function Login() {
     e.preventDefault();
     setError('');
     
-    // Basic validation
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
@@ -41,10 +42,10 @@ function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Redirect to dashboard on successful login
-      navigate('/dashboard');
+      setLoading(false);
+      setRedirecting(true);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      // Handle specific error cases
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('Invalid email or password. Please try again.');
       } else if (err.code === 'auth/too-many-requests') {
@@ -56,11 +57,14 @@ function Login() {
       }
       console.error('Login error:', err);
     } finally {
-      setLoading(false);
+      if (!redirecting) {
+        setLoading(false);
+      }
     }
   };
 
   if (!isMounted) return null;
+  if (redirecting) return <LoadingScreen />;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-slate-950 dark:via-brand-primary-dark/20 dark:to-slate-950 overflow-auto">
@@ -71,6 +75,13 @@ function Login() {
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50 w-full max-w-sm">
             {/* Header Section */}
             <div className="px-6 pt-8 pb-4">
+              <div className="flex justify-center mb-4">
+                <img
+                  src="/pwa-512x512.png"
+                  alt="EcoRoute"
+                  className="w-24 h-24 object-contain"
+                />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">Welcome Back</h1>
                 <p className="text-gray-600 dark:text-gray-400 text-center text-sm">Sign in to continue to EcoRoute</p>

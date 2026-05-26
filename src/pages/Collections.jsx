@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Plus, X, Loader2, Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
 import { supabase } from '../supabase';
+import PageHeader from '../components/layout/PageHeader';
+import PageStatGrid from '../components/layout/PageStatGrid';
+import PageStatCard from '../components/layout/PageStatCard';
 
 const Collections = () => {
   const { activePalette } = useTheme();
@@ -175,10 +178,8 @@ const Collections = () => {
   // Actually collected this month (we would ideally filter transactions by current month)
   // For now, let's assume all transactions in state are recent or use a simpler metric
   const totalCollected = transactions.reduce((sum, tx) => {
-    const amount = typeof tx.amount === 'string' 
-      ? parseInt(tx.amount.replace(/\D/g, ''), 10) 
-      : Number(tx.amount);
-    return sum + (amount || 0);
+    if (tx.method?.includes('(Pending)')) return sum;
+    return sum + (tx.rawAmount || 0);
   }, 0);
 
   // Defaulter Rate: % of tenants with negative balance
@@ -262,54 +263,51 @@ const Collections = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto min-h-screen space-y-6">
       
-      {/* 1. Financial Command Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Collections & Ledger</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track payments, verify M-PESA, and log cash</p>
-        </div>
-        <button
-          onClick={() => setIsPaymentModalOpen(true)}
-          className="flex-shrink-0 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 font-semibold text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Log Cash Payment</span>
-        </button>
-      </div>
+      <PageHeader
+        icon={Wallet}
+        iconClassName="text-blue-600 dark:text-blue-400"
+        iconBgClassName="bg-blue-500/10 dark:bg-blue-500/20"
+        title="Collections & Ledger"
+        subtitle="Payments and M-PESA — live from Supabase"
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="flex-shrink-0 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-lg hover:bg-blue-700 transition-all font-semibold text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Log Cash Payment
+          </button>
+        }
+      />
 
-      {/* Mini Reconciliation Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-        {/* Card 1: Expected */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Monthly Billing Total</p>
-          <h3 className="text-2xl font-black text-gray-900 dark:text-white">KES {totalMonthlyRate.toLocaleString()}</h3>
-        </div>
-        
-        {/* Card 2: Collected */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total Collections</p>
-          <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">KES {totalCollected.toLocaleString()}</h3>
-        </div>
-        
-        {/* Card 3: Defaulter Rate */}
-        <div className="relative bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl rounded-2xl p-5 shadow-xl flex flex-col justify-center overflow-hidden group">
-          {/* Pulsing Border Effect for high defaulter rate */}
-          {parseFloat(defaulterRate) > 20 && (
-            <>
-              <div className="absolute inset-0 border-2 border-rose-500/50 dark:border-rose-500/40 rounded-2xl animate-pulse pointer-events-none"></div>
-              <div className="absolute inset-0 bg-rose-500/5 dark:bg-rose-500/10 pointer-events-none"></div>
-            </>
-          )}
-          
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 relative z-10">Defaulter Rate</p>
-          <h3 className={`text-2xl font-black relative z-10 ${parseFloat(defaulterRate) > 20 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-900 dark:text-white'}`}>
-            {defaulterRate}%
-          </h3>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 relative z-10">
-            {defaultingTenants} of {totalTenants} tenants in debt
-          </p>
-        </div>
-      </div>
+      <PageStatGrid columns={3}>
+        <PageStatCard
+          label="Monthly Billing"
+          value={`KES ${totalMonthlyRate.toLocaleString()}`}
+          icon={Wallet}
+          iconClassName="text-gray-600 dark:text-gray-300"
+          iconBgClassName="bg-gray-100 dark:bg-gray-800"
+        />
+        <PageStatCard
+          label="Total Collected"
+          value={`KES ${totalCollected.toLocaleString()}`}
+          subtitle="Approved payments only"
+          icon={TrendingUp}
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          iconBgClassName="bg-emerald-100 dark:bg-emerald-500/20"
+        />
+        <PageStatCard
+          label="Defaulter Rate"
+          value={`${defaulterRate}%`}
+          subtitle={`${defaultingTenants} of ${totalTenants} in debt`}
+          icon={AlertTriangle}
+          valueClassName={parseFloat(defaulterRate) > 20 ? 'text-rose-600 dark:text-rose-500' : 'text-gray-900 dark:text-white'}
+          iconClassName="text-rose-600 dark:text-rose-400"
+          iconBgClassName="bg-rose-100 dark:bg-rose-500/20"
+        />
+      </PageStatGrid>
 
       {/* 2. The Master Ledger (Data Table Container) */}
       <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl shadow-xl overflow-hidden flex flex-col">

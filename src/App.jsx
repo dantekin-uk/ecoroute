@@ -13,6 +13,8 @@ const Estates = React.lazy(() => import('./pages/Estates'));
 const Collections = React.lazy(() => import('./pages/Collections'));
 const CollectorDashboard = React.lazy(() => import('./pages/CollectorDashboard'));
 const TeamAndSecurity = React.lazy(() => import('./pages/TeamAndSecurity'));
+const Expenses = React.lazy(() => import('./pages/Expenses'));
+const Inventory = React.lazy(() => import('./pages/Inventory'));
 const PrivateRoute = React.lazy(() => import('./components/PrivateRoute'));
 
 const AuthenticatedLayout = ({ children }) => {
@@ -125,6 +127,30 @@ function App() {
                 <ErrorBoundary>
                   <AuthenticatedLayout>
                     <TeamAndSecurity />
+                  </AuthenticatedLayout>
+                </ErrorBoundary>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/expenses/*"
+            element={
+              <PrivateRoute>
+                <ErrorBoundary>
+                  <AuthenticatedLayout>
+                    <Expenses />
+                  </AuthenticatedLayout>
+                </ErrorBoundary>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/inventory/*"
+            element={
+              <PrivateRoute>
+                <ErrorBoundary>
+                  <AuthenticatedLayout>
+                    <Inventory />
                   </AuthenticatedLayout>
                 </ErrorBoundary>
               </PrivateRoute>

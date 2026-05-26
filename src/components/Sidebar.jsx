@@ -84,7 +84,11 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, [isOpen, onClose]);
 
   const toggleGroup = (title) => {
-    setExpandedGroups(prev => ({ ...prev, [title]: !prev[title] }));
+    const newExpandedGroups = {};
+    menuGroups.forEach(group => {
+      newExpandedGroups[group.title] = group.title === title ? !expandedGroups[title] : false;
+    });
+    setExpandedGroups(newExpandedGroups);
   };
 
   return (
@@ -100,22 +104,23 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 shadow-2xl z-50 transition-all duration-300 ease-in-out transform
+        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 shadow-2xl z-40 transition-all duration-300 ease-in-out transform overflow-visible
           ${isOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full md:translate-x-0'}`}
       >
-        <div className={`flex flex-col h-full ${isOpen ? 'overflow-y-auto' : 'overflow-visible'} custom-scrollbar`}>
-          {/* Branding Area */}
-          <div className="h-20 flex items-center px-6">
-            {/* Use activePalette for branding gradient and shadow */}
-            <div className={`w-10 h-10 ${activePalette.bgGradientBrand} rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg ${activePalette.shadow} border border-white/20`}>
-              <div className="w-5 h-5 bg-slate-900/20 rounded-sm rotate-45 blur-[1px]" />
-              <div className="absolute w-4 h-4 bg-white rounded-sm rotate-45" />
-            </div>
-            {isOpen && <span className={`ml-3 font-extrabold text-xl text-gray-900 dark:text-white truncate tracking-tight bg-clip-text text-transparent ${activePalette.bgGradientText}`}>EcoRoute</span>}
+        <div className="flex flex-col h-full">
+          {/* Branding — fixed at top */}
+          <div className={`h-20 flex-shrink-0 flex items-center pl-1 sm:pl-1 border-b border-gray-100 dark:border-gray-800 ${isOpen ? 'justify-start' : 'justify-center'}`}>
+            <img
+              src="/pwa-512x512.png"
+              alt="EcoRoute"
+              className={`${isOpen ? 'w-32 h-32' : 'w-28 h-28'} object-contain flex-shrink-0`}
+            />
           </div>
 
+          {/* Scrollable menu area */}
+          <div className="flex-1 overflow-y-auto overflow-x-visible relative">
           {/* Recent Pages Section */}
-          <div className={`py-4 mx-3 mb-2 rounded-2xl ${activePalette.recentBg} border ${activePalette.recentBorder} transition-all duration-300 ${!isOpen && 'bg-transparent border-transparent'}`}>
+          <div className={`py-4 mx-3 mb-2 mt-2 rounded-2xl ${activePalette.recentBg} border ${activePalette.recentBorder} transition-all duration-300 ${!isOpen && 'bg-transparent border-transparent'}`}>
             {isOpen && <div className={`px-4 mb-3 text-[11px] font-bold ${activePalette.recentText} uppercase tracking-[0.2em] flex items-center gap-2`}><Clock size={12}/> Recent</div>}
             <div className="px-2 space-y-1">
               {recentPages.map((page) => (
@@ -128,7 +133,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <page.icon size={18} className="flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
                   {isOpen && <span className="ml-3 text-sm font-medium truncate">{page.name}</span>}
                   {!isOpen && (
-                    <div className="absolute left-full ml-4 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[60]">
+                    <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[999999]">
                       {page.name}
                       <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45" />
                     </div>
@@ -138,7 +143,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <nav className="flex-1 py-4 px-3 space-y-6">
+          <nav className="py-4 px-3 space-y-6">
             {menuGroups.map((group) => (
               <div key={group.title}>
                 {isOpen ? (
@@ -175,7 +180,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                           <item.icon size={20} className={`flex-shrink-0 transition-transform duration-300 group-hover:scale-110 ${isActive ? `${activePalette.activeText} drop-shadow-[0_0_5px_rgba(132,204,22,0.5)]` : ''}`} />
                           {isOpen && <span className={`ml-3 text-sm font-semibold truncate ${isActive ? activePalette.activeText : ''}`}>{item.name}</span>}
                           {!isOpen && (
-                            <div className="absolute left-full ml-4 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[60]">
+                            <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[999999]">
                               {item.name}
                               <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45" />
                             </div>
@@ -188,6 +193,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </div>
             ))}
           </nav>
+          </div>
         </div>
       </div>
     </>

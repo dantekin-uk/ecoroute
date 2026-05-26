@@ -3,9 +3,10 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
  
-import { useTheme } from '../context/useTheme'; // Import useTheme
+import { useTheme } from '../context/useTheme';
 import { FiMail, FiLock, FiUser, FiArrowRight, FiLoader } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import LoadingScreen from '../components/LoadingScreen';
 
 function SignUp() {
   const [fullName, setFullName] = useState('')
@@ -14,8 +15,9 @@ function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const { activePalette } = useTheme(); // Get activePalette
+  const { activePalette } = useTheme();
 
   const navigate = useNavigate();
 
@@ -41,15 +43,12 @@ function SignUp() {
     setLoading(true)
 
     try {
-      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       
-      // Update user profile with display name
       await updateProfile(userCredential.user, {
         displayName: fullName,
       })
 
-      // Create user document in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
         displayName: fullName,
@@ -58,10 +57,10 @@ function SignUp() {
         updatedAt: new Date().toISOString()
       });
 
-      // Redirect to dashboard after successful signup
-      navigate('/dashboard');
+      setLoading(false);
+      setRedirecting(true);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      // Handle specific error cases
       if (err.code === 'auth/email-already-in-use') {
         setError('An account with this email already exists. Please use a different email or log in.');
       } else if (err.code === 'auth/invalid-email') {
@@ -73,7 +72,9 @@ function SignUp() {
       }
       console.error('Signup error:', err);
     } finally {
-      setLoading(false);
+      if (!redirecting) {
+        setLoading(false);
+      }
     }
   }
 
@@ -84,6 +85,7 @@ function SignUp() {
   }, [])
 
   if (!isMounted) return null
+  if (redirecting) return <LoadingScreen />
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-auto">
@@ -95,6 +97,13 @@ function SignUp() {
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50 w-full max-w-sm">
           {/* Header Section */}
           <div className="px-6 pt-8 pb-4">
+            <div className="flex justify-center mb-4">
+              <img
+                src="/pwa-512x512.png"
+                alt="EcoRoute"
+                className="w-24 h-24 object-contain"
+              />
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">Create Account</h1>
               <p className="text-gray-600 dark:text-gray-400 text-center text-sm">Join EcoRoute and start your journey</p>

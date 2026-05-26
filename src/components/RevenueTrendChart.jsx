@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
@@ -210,9 +211,9 @@ const RevenueTrendChart = () => {
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Expenses</span>
             </div>
           </div>
-          <button className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
-            View Full Report &rarr;
-          </button>
+          <Link to="/expenses" className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+            View expenses &rarr;
+          </Link>
         </div>
       </div>
     </motion.div>

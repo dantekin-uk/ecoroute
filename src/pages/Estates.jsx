@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Building2, Users, AlertTriangle, ChevronDown, ChevronRight, MoreVertical, X, UploadCloud, Wand2, FileSpreadsheet, Trash2, Edit2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/useTheme';
 import { supabase } from '../supabase';
+import PageHeader from '../components/layout/PageHeader';
+import PageStatGrid from '../components/layout/PageStatGrid';
+import PageStatCard from '../components/layout/PageStatCard';
 
 const Estates = () => {
   const { activePalette } = useTheme();
@@ -283,16 +286,20 @@ const Estates = () => {
         <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
       )}
 
-      {/* 1. Command Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Estates & Tenants</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
-            {isLoading && <Loader2 size={14} className="animate-spin text-blue-500" />} Manage your properties and doors
-          </p>
-        </div>
-        
-        <div className="flex w-full sm:w-auto items-center gap-3">
+      <PageHeader
+        icon={Building2}
+        iconClassName="text-blue-600 dark:text-blue-400"
+        iconBgClassName="bg-blue-500/10 dark:bg-blue-500/20"
+        title="Estates & Tenants"
+        subtitle={
+          <span className="flex items-center gap-2">
+            {isLoading && <Loader2 size={14} className="animate-spin text-blue-500" />}
+            Manage properties and doors — live from Supabase
+          </span>
+        }
+        actions={
+          <>
+          <div className="flex w-full sm:w-auto items-center gap-3 flex-1 sm:flex-initial">
           <button
             onClick={() => setIsEstateModalOpen(true)}
             className={`flex-shrink-0 flex items-center gap-2 bg-white dark:bg-[#1E293B] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 font-medium text-sm`}
@@ -323,44 +330,35 @@ const Estates = () => {
             <span className="sm:hidden">Add</span>
           </button>
         </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* 2. Quick Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Active Tenants</p>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white mt-1">
-              {estatesData.reduce((acc, est) => acc + est.tenants.length, 0).toLocaleString()}
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estates Managed</p>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white mt-1">
-              {estatesData.length}
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Defaulter Rate</p>
-            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-500 mt-1">{liveDefaulterRate}%</h3>
-          </div>
-        </div>
-      </div>
+      <PageStatGrid columns={3}>
+        <PageStatCard
+          label="Active Tenants"
+          value={totalTenantsCount.toLocaleString()}
+          icon={Users}
+          iconClassName="text-blue-600 dark:text-blue-400"
+          iconBgClassName="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <PageStatCard
+          label="Estates"
+          value={estatesData.length}
+          icon={Building2}
+          iconClassName="text-purple-600 dark:text-purple-400"
+          iconBgClassName="bg-purple-100 dark:bg-purple-500/20"
+        />
+        <PageStatCard
+          label="Defaulter Rate"
+          value={`${liveDefaulterRate}%`}
+          subtitle={`${defaultingCount} tenants in arrears`}
+          icon={AlertTriangle}
+          valueClassName="text-rose-600 dark:text-rose-500"
+          iconClassName="text-rose-600 dark:text-rose-400"
+          iconBgClassName="bg-rose-100 dark:bg-rose-500/20"
+        />
+      </PageStatGrid>
 
       {/* 3. Main Data View (The Estate Accordion) */}
       <div className="space-y-4">

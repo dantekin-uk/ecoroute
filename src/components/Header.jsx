@@ -44,7 +44,7 @@ const HeaderContent = ({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   return (
-    <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300 sticky top-0 z-40">
+    <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300 sticky top-0 z-30">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left section - Mobile menu toggle */}

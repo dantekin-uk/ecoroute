@@ -3,6 +3,9 @@ import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Pl
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
 import { supabase } from '../supabase';
+import PageHeader from '../components/layout/PageHeader';
+import PageStatGrid from '../components/layout/PageStatGrid';
+import PageStatCard from '../components/layout/PageStatCard';
 
 const TeamAndSecurity = () => {
   const { activePalette } = useTheme();
@@ -54,9 +57,11 @@ const TeamAndSecurity = () => {
         const { data: txData } = await supabase.from('transactions').select('*').like('payment_method', 'Cash%');
         
         const enhancedCollectors = collectorsData.map(c => {
-          // Calculate cash logged by this collector
           const collectorCash = (txData || [])
-            .filter(tx => tx.collector_name === c.name)
+            .filter(
+              (tx) =>
+                tx.collector_name === c.name && tx.payment_method?.includes('(Pending)')
+            )
             .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
           return {
@@ -244,57 +249,51 @@ const TeamAndSecurity = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto min-h-screen space-y-6 font-sans">
-      {/* 1. Command Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 rounded-xl border border-blue-200 dark:border-blue-500/30">
-            <Shield className="w-6 h-6 text-blue-600 dark:text-blue-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Team Operations & Security</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Command center for financial risk monitoring and access control.</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className={`flex-shrink-0 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 font-semibold text-sm`}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add New Collector</span>
-        </button>
-      </div>
+      <PageHeader
+        icon={Shield}
+        iconClassName="text-blue-600 dark:text-blue-500"
+        iconBgClassName="bg-blue-100 dark:bg-blue-500/20"
+        title="Team & Security"
+        subtitle="Collectors, cash risk, and incidents — live from Supabase"
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="flex-shrink-0 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-lg hover:bg-blue-700 font-semibold text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add Collector
+          </button>
+        }
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-gray-400">
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider">Total Cash at Risk</h3>
-          </div>
-          <p className="text-3xl font-black text-rose-600 dark:text-rose-500">
-            KES {stats.cashAtRisk.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-gray-400">
-            <Users className="w-4 h-4 text-blue-500" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider">Active Field Staff</h3>
-          </div>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">
-            {stats.activeStaff}
-          </p>
-        </div>
-
-        <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-gray-400">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider">Open Incidents</h3>
-          </div>
-          <p className="text-3xl font-black text-amber-600 dark:text-amber-500">
-            {incidents.length} Alerts
-          </p>
-        </div>
-      </div>
+      <PageStatGrid columns={3}>
+        <PageStatCard
+          label="Cash at Risk"
+          value={`KES ${stats.cashAtRisk.toLocaleString()}`}
+          subtitle="Pending cash in field"
+          icon={AlertTriangle}
+          valueClassName="text-rose-600 dark:text-rose-500"
+          iconClassName="text-rose-600 dark:text-rose-400"
+          iconBgClassName="bg-rose-100 dark:bg-rose-500/20"
+        />
+        <PageStatCard
+          label="Active Staff"
+          value={stats.activeStaff}
+          icon={Users}
+          iconClassName="text-blue-600 dark:text-blue-400"
+          iconBgClassName="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <PageStatCard
+          label="Open Incidents"
+          value={`${incidents.length}`}
+          subtitle="From collector portal"
+          icon={Activity}
+          valueClassName="text-amber-600 dark:text-amber-500"
+          iconClassName="text-amber-600 dark:text-amber-400"
+          iconBgClassName="bg-amber-100 dark:bg-amber-500/20"
+        />
+      </PageStatGrid>
 
       {/* Live Incident Feed */}
       <div className="bg-white/80 dark:bg-[#1E293B]/30 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/50 rounded-2xl shadow-xl overflow-hidden flex flex-col">
