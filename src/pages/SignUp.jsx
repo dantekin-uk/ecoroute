@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { useAuth } from '../context/useAuth';
  
 import { useTheme } from '../context/useTheme';
 import { FiMail, FiLock, FiUser, FiArrowRight, FiLoader } from 'react-icons/fi';
