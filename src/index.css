@@ -14,6 +14,9 @@ html, body, #root {
   background: var(--bg-color);
   color: var(--text-color);
   transition: background 0.3s ease, color 0.3s ease;
+  -webkit-overflow-scrolling: touch;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 :root {
@@ -50,4 +53,36 @@ html, body, #root {
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #334155;
+}
+
+/* Mobile Rendering Fixes - Fix color artifacts when scrolling */
+@media (max-width: 768px) {
+  * {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  
+  /* Fix backdrop blur artifacts on mobile */
+  .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+  
+  /* Fix opacity and transparency issues */
+  .dark {
+    background-attachment: scroll !important;
+  }
+  
+  /* Smooth scrolling for mobile */
+  html, body {
+    scroll-behavior: smooth;
+  }
+  
+  /* Disable GPU acceleration for problematic elements */
+  .recharts-wrapper, .recharts-surface, svg {
+    -webkit-transform: none;
+    transform: none;
+  }
 }
