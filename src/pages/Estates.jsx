@@ -32,19 +32,20 @@ const Estates = () => {
   const [genRate, setGenRate] = useState('450');
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchData();
 
     // Set up real-time subscriptions
     const estatesSubscription = supabase
       .channel('estates-changes')
-      .on('postgres_changes', { event: '*', table: 'estates', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'estates', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchData();
       })
       .subscribe();
 
     const tenantsSubscription = supabase
       .channel('estates-tenants-changes')
-      .on('postgres_changes', { event: '*', table: 'tenants', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'tenants', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchData();
       })
       .subscribe();
@@ -53,7 +54,7 @@ const Estates = () => {
       supabase.removeChannel(estatesSubscription);
       supabase.removeChannel(tenantsSubscription);
     };
-  }, []);
+  }, [currentUser]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -143,7 +144,7 @@ const Estates = () => {
   };
 
   const handleAddTenant = async () => {
-    if (!newTenant.estateId || !newTenant.houseNumber || !newTenant.monthlyRate) {
+    if (!newTenant.estateId || !newTenant.houseNumber || !newTenant.monthlyRate || !currentUser) {
       alert('Please fill in all required fields (Estate, House Number, Monthly Rate).');
       return;
     }
@@ -152,6 +153,7 @@ const Estates = () => {
     const rate = Number(newTenant.monthlyRate);
     // When a tenant is added, they start with a negative balance of their first month's rate
     const { error } = await supabase.from('tenants').insert([{
+      user_id: currentUser.id,
       estate_id: newTenant.estateId,
       block_number: newTenant.houseNumber,
       tenant_name: 'Occupant',
