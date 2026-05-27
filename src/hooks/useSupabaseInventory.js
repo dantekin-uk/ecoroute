@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { isToday } from '../lib/dateRange';
 import { buildInventoryForecast, pickBestForecastItem } from '../lib/inventoryForecast';
+import { useAuth } from '../context/AuthContext';
 
 function mapConsumable(item) {
   return {
@@ -20,6 +21,8 @@ function mapAsset(item) {
 }
 
 export function useSupabaseInventory() {
+  const { currentUser } = useAuth();
+  
   const [consumables, setConsumables] = useState([]);
   const [assets, setAssets] = useState([]);
   const [dispenseLogs, setDispenseLogs] = useState([]);
@@ -29,14 +32,16 @@ export function useSupabaseInventory() {
   const [tableMissing, setTableMissing] = useState(false);
 
   const fetchAllData = useCallback(async () => {
+    if (!currentUser) return;
+    
     setIsLoading(true);
     try {
       const [consumablesResult, assetsResult, logsResult, collectorsResult, estatesResult] = await Promise.all([
-        supabase.from('consumables').select('*').order('name'),
-        supabase.from('fixed_assets').select('*').order('name'),
-        supabase.from('dispense_logs').select('*').order('timestamp', { ascending: false }),
-        supabase.from('collectors').select('id, name, assigned_estate').order('name'),
-        supabase.from('estates').select('id, name').order('name'),
+        supabase.from('consumables').select('*').eq('user_id', currentUser.id).order('name'),
+        supabase.from('fixed_assets').select('*').eq('user_id', currentUser.id).order('name'),
+        supabase.from('dispense_logs').select('*').eq('user_id', currentUser.id).order('timestamp', { ascending: false }),
+        supabase.from('collectors').select('id, name, assigned_estate').eq('user_id', currentUser.id).order('name'),
+        supabase.from('estates').select('id, name').eq('user_id', currentUser.id).order('name'),
       ]);
 
       const missing =
@@ -72,7 +77,7 @@ export function useSupabaseInventory() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return;
