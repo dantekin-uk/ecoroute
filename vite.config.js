@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     hmr: {
       overlay: true,
+      // Use a specific port for HMR WebSocket to avoid conflicts
+      // clientPort: 5173, // Or any other available port, e.g., 24678
     },
   },
 })

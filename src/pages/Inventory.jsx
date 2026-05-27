@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/useTheme';
+import { useAuth } from '../context/useAuth';
 import { supabase } from '../supabase';
 import { useSupabaseInventory } from '../hooks/useSupabaseInventory';
 import InventoryForecastPanel from '../components/InventoryForecastPanel';

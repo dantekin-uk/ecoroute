@@ -75,31 +75,33 @@ export function useSupabaseInventory() {
   }, []);
 
   useEffect(() => {
+    if (!currentUser) return;
+    
     fetchAllData();
 
     const consumablesChannel = supabase
       .channel('consumables-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables', filter: `user_id=eq.${currentUser.id}` }, () => fetchAllData())
       .subscribe();
 
     const assetsChannel = supabase
       .channel('assets-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixed_assets' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixed_assets', filter: `user_id=eq.${currentUser.id}` }, () => fetchAllData())
       .subscribe();
 
     const logsChannel = supabase
       .channel('dispense-logs-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dispense_logs' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dispense_logs', filter: `user_id=eq.${currentUser.id}` }, () => fetchAllData())
       .subscribe();
 
     const collectorsChannel = supabase
       .channel('collectors-inventory-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors', filter: `user_id=eq.${currentUser.id}` }, () => fetchAllData())
       .subscribe();
 
     const estatesChannel = supabase
       .channel('estates-inventory-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'estates' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estates', filter: `user_id=eq.${currentUser.id}` }, () => fetchAllData())
       .subscribe();
 
     return () => {
@@ -109,7 +111,7 @@ export function useSupabaseInventory() {
       supabase.removeChannel(collectorsChannel);
       supabase.removeChannel(estatesChannel);
     };
-  }, [fetchAllData]);
+  }, [currentUser, fetchAllData]);
 
   const collectors = useMemo(
     () => collectorRecords.map((c) => c.name),

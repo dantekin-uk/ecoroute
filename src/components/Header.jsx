@@ -3,16 +3,16 @@ import { useState } from 'react';
 import { Search, Moon, Sun, Menu, X, User, LogOut, Settings, Bell } from 'lucide-react'; // Removed Palette icon
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/useTheme';
-import { useAuth } from '../context/useAuth';
+import { useAuth } from '../AuthContext';
 
 const Header = ({ onMenuClick, isMobileMenuOpen }) => {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { currentUser: user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
-      await logout();
+      await signOut();
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -26,7 +26,7 @@ const Header = ({ onMenuClick, isMobileMenuOpen }) => {
       isDarkMode={isDarkMode}
       toggleTheme={toggleTheme}
       user={user}
-      logout={handleSignOut}
+      onSignOut={handleSignOut}
     />
   );
 };
@@ -38,7 +38,7 @@ const HeaderContent = ({
   isDarkMode,
   toggleTheme,
   user,
-  logout,
+  onSignOut,
 }) => {
   const { activePalette } = useTheme(); // Removed setPalette and techyColorPalettes
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -161,7 +161,7 @@ const HeaderContent = ({
                     </a>
                     <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                     <button
-                      onClick={logout}
+                      onClick={onSignOut}
                       className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors duration-150"
                     >
                       <LogOut className="mr-3 h-5 w-5" />

@@ -3,17 +3,19 @@ import { supabase } from '../supabase';
 import { useGlobalFilter } from './FilterContext';
 import { useSupabaseExpenses } from '../hooks/useSupabaseExpenses';
 import { getDateRangeForFilter } from '../lib/dateRange';
+import { useAuth } from './useAuth';
 
 const DashboardContext = createContext();
 
 export const useDashboardData = () => useContext(DashboardContext);
 
 export const DashboardProvider = ({ children }) => {
+  const { currentUser } = useAuth();
   const { timeRange } = useGlobalFilter();
   const {
     filteredByRange: expensesInRange,
     isLoading: expensesLoading,
-  } = useSupabaseExpenses({ timeRange });
+  } = useSupabaseExpenses({ timeRange, userId: currentUser?.id });
 
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -179,22 +181,24 @@ export const DashboardProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!currentUser) return;
+    
     setLoading(true);
     fetchDashboardData();
 
     const tenantsSub = supabase
       .channel('dashboard-tenants')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants', filter: `user_id=eq.${currentUser.id}` }, () => fetchDashboardData())
       .subscribe();
 
     const txSub = supabase
       .channel('dashboard-transactions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${currentUser.id}` }, () => fetchDashboardData())
       .subscribe();
 
     const consumablesSub = supabase
       .channel('dashboard-consumables')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables', filter: `user_id=eq.${currentUser.id}` }, () => fetchDashboardData())
       .subscribe();
 
     return () => {
@@ -202,7 +206,7 @@ export const DashboardProvider = ({ children }) => {
       supabase.removeChannel(txSub);
       supabase.removeChannel(consumablesSub);
     };
-  }, [timeRange, expensesInRange]);
+  }, [currentUser, timeRange, expensesInRange]);
 
   return (
     <DashboardContext.Provider

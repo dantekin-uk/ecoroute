@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/useAuth';
-
+import { useAuth } from '../AuthContext'; // Corrected import path
+import { supabase } from '../supabase'; // Import supabase for login logic
 import { useTheme } from '../context/useTheme';
 import { FiArrowRight, FiLoader } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -14,31 +14,39 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { activePalette } = useTheme();
-  const { currentUser, login } = useAuth();
+  const { activePalette } = useTheme(); // Assuming useTheme is correctly imported and used
+  const { user } = useAuth(); // Changed from currentUser to user
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsMounted(true);
     // Check if user is already logged in and redirect
-    if (currentUser) {
+    if (user) {
       navigate('/dashboard');
     }
-  }, [currentUser, navigate]);
+  }, [user, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
     }
-    
+
     setLoading(true);
 
     try {
-      await login(email, password);
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);

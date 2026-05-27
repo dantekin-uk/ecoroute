@@ -27,17 +27,19 @@ export function useSupabaseExpenses({ timeRange } = {}) {
   }, []);
 
   useEffect(() => {
+    if (!userId) return;
+    
     fetchExpenses();
 
     const channel = supabase
       .channel('expenses-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => fetchExpenses())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${userId}` }, () => fetchExpenses())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchExpenses]);
+  }, [userId, fetchExpenses]);
 
   const filteredByRange = useMemo(() => {
     if (!timeRange) return expenses;

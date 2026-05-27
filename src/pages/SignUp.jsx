@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/useAuth';
+import { useAuth } from '../AuthContext';
+import { supabase } from '../supabase';
  
 import { useTheme } from '../context/useTheme';
 import { FiMail, FiLock, FiUser, FiArrowRight, FiLoader } from 'react-icons/fi';
@@ -16,15 +17,15 @@ function SignUp() {
   const [redirecting, setRedirecting] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const { activePalette } = useTheme();
-  const { signup, currentUser } = useAuth();
+  const { user } = useAuth();
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (currentUser) {
+    if (user) {
       navigate('/dashboard');
     }
-  }, [currentUser, navigate]);
+  }, [user, navigate]);
 
   const handleSignUp = async (e) => {
     e.preventDefault()
@@ -48,7 +49,15 @@ function SignUp() {
     setLoading(true)
 
     try {
-      await signup(email, password);
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+      if (signUpError) throw signUpError;
+
       setLoading(false);
       setRedirecting(true);
       setTimeout(() => navigate('/dashboard'), 1500);

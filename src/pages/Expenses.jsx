@@ -37,12 +37,13 @@ const Expenses = () => {
   });
 
   React.useEffect(() => {
+    if (!currentUser) return;
     const fetchEstates = async () => {
-      const { data } = await supabase.from('estates').select('name').order('name');
+      const { data } = await supabase.from('estates').select('name').eq('user_id', currentUser.id).order('name');
       if (data) setEstatesData(data);
     };
     fetchEstates();
-  }, []);
+  }, [currentUser]);
 
   const filteredExpenses = useMemo(() => expenses.filter((exp) => {
     const q = searchQuery.toLowerCase();
