@@ -18,9 +18,11 @@ export function useCollectorPortal(mode = 'field') {
   const [estates, setEstates] = useState([]);
   const [activeEstate, setActiveEstate] = useState(null);
   const [houses, setHouses] = useState([]);
+  const [tenantsData, setTenantsData] = useState([]); // Store tenants locally
   const [allCollectors, setAllCollectors] = useState([]);
   const [selectedCollectorName, setSelectedCollectorName] = useState('Admin');
   const [todayTransactions, setTodayTransactions] = useState([]);
+  const [allTransactions, setAllTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedHouse, setSelectedHouse] = useState(null);
@@ -29,6 +31,15 @@ export function useCollectorPortal(mode = 'field') {
   const collectorName = isDedicatedCollector
     ? collectorAuth.name
     : selectedCollectorName;
+  
+  // Wrap setActiveEstate to prevent dedicated collectors from changing estates
+  const safeSetActiveEstate = (estate) => {
+    if (isDedicatedCollector) {
+      // Dedicated collectors can't change estates
+      return;
+    }
+    setActiveEstate(estate);
+  };
 
   // Determine the correct user_id to use
   const effectiveUserId = isDedicatedCollector ? collectorAuth?.user_id : currentUser?.id;
@@ -42,17 +53,24 @@ export function useCollectorPortal(mode = 'field') {
     if (data) setAllCollectors(data);
   }, [effectiveUserId]);
 
-  const fetchTodayTransactions = useCallback(async () => {
+  const fetchAllTransactions = useCallback(async () => {
     if (!effectiveUserId) return;
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
     const { data: txs } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', effectiveUserId)
-      .gte('created_at', startOfDay.toISOString())
       .order('created_at', { ascending: false });
-    setTodayTransactions(txs || []);
+    setAllTransactions(txs || []);
+    
+    // Also set todayTransactions for backward compatibility
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const todayTxs = (txs || []).filter(tx => {
+      const txDate = new Date(tx.created_at);
+      txDate.setHours(0, 0, 0, 0);
+      return txDate.getTime() === startOfDay.getTime();
+    });
+    setTodayTransactions(todayTxs);
   }, [effectiveUserId]);
 
   const fetchPortalData = useCallback(async () => {
@@ -89,26 +107,34 @@ export function useCollectorPortal(mode = 'field') {
         return estatesData[0] || null;
       });
 
-      await fetchTodayTransactions();
+      await fetchAllTransactions();
     } catch (err) {
       console.error('Collector portal fetch error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [isDedicatedCollector, collectorAuth?.id, fetchTodayTransactions, effectiveUserId]);
+  }, [isDedicatedCollector, collectorAuth?.id, fetchAllTransactions, effectiveUserId]);
 
   const loadHousesForEstate = useCallback(async (estateId) => {
     if (!estateId || !effectiveUserId) {
       setHouses([]);
+      setTenantsData([]);
       return;
     }
-    const { data: tenantsData, error } = await supabase.from('tenants').select('*').eq('user_id', effectiveUserId);
+    const { data: fetchedTenants, error } = await supabase.from('tenants').select('*').eq('user_id', effectiveUserId);
     if (error) {
       console.error(error);
       return;
     }
-    setHouses(mapTenantsToHouses(tenantsData || [], estateId));
+    setTenantsData(fetchedTenants || []);
   }, [effectiveUserId]);
+  
+  // Regenerate houses from local tenantsData and allTransactions
+  useEffect(() => {
+    if (activeEstate?.id && tenantsData.length > 0) {
+      setHouses(mapTenantsToHouses(tenantsData, activeEstate.id, allTransactions));
+    }
+  }, [activeEstate?.id, tenantsData, allTransactions]);
 
   useEffect(() => {
     if (isAdminMode) loadCollectors();
@@ -136,7 +162,7 @@ export function useCollectorPortal(mode = 'field') {
         if (activeEstate?.id) loadHousesForEstate(activeEstate.id);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: effectiveUserId ? `user_id=eq.${effectiveUserId}` : '' }, () => {
-        fetchTodayTransactions();
+        fetchAllTransactions();
         if (activeEstate?.id) loadHousesForEstate(activeEstate.id);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors', filter: effectiveUserId ? `user_id=eq.${effectiveUserId}` : '' }, () => {
@@ -145,12 +171,12 @@ export function useCollectorPortal(mode = 'field') {
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [mode, fetchPortalData, isAdminMode, loadCollectors, loadHousesForEstate, fetchTodayTransactions, activeEstate?.id, effectiveUserId]);
+  }, [mode, fetchPortalData, isAdminMode, loadCollectors, loadHousesForEstate, fetchAllTransactions, activeEstate?.id, effectiveUserId]);
 
+  // Call loadHousesForEstate when activeEstate changes
   useEffect(() => {
     if (activeEstate?.id) {
-      setIsLoading(true);
-      loadHousesForEstate(activeEstate.id).finally(() => setIsLoading(false));
+      loadHousesForEstate(activeEstate.id);
     }
   }, [activeEstate?.id, loadHousesForEstate]);
 
@@ -202,25 +228,34 @@ export function useCollectorPortal(mode = 'field') {
   };
 
   const handleHouseClick = (house) => {
-    if (house.balance < 0) setSelectedHouse(house);
+    if (house.balance < 0 && !house.isProcessedToday) {
+      setSelectedHouse(house);
+    }
   };
 
   const handleReportIssue = async (issueType) => {
     if (!selectedHouse || !activeEstate || !effectiveUserId) return;
+    if (selectedHouse.isProcessedToday) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('transactions').insert([
-        {
-          user_id: effectiveUserId,
-          house_number: selectedHouse.id,
-          estate_name: activeEstate.name,
-          amount: 0,
-          payment_method: `Incident: ${issueType}`,
-          collector_name: collectorName,
-          resulting_balance: selectedHouse.balance,
-        },
-      ]);
+      const newTransaction = {
+        user_id: effectiveUserId,
+        house_number: selectedHouse.id,
+        estate_name: activeEstate.name,
+        amount: 0,
+        payment_method: `Incident: ${issueType}`,
+        collector_name: collectorName,
+        resulting_balance: selectedHouse.balance,
+      };
+      const { data, error } = await supabase.from('transactions').insert([newTransaction]).select();
       if (error) throw error;
+      
+      // Update local state
+      setAllTransactions((prev) => (data ? [...data, ...prev] : prev));
+      setTodayTransactions((prev) => (data ? [...data, ...prev] : prev));
+      setHouses((prev) =>
+        prev.map((h) => (h.id === selectedHouse.id ? { ...h, isProcessedToday: true } : h))
+      );
       handleCloseSheet();
     } catch (err) {
       alert(`Error reporting issue: ${err.message}`);
@@ -231,26 +266,29 @@ export function useCollectorPortal(mode = 'field') {
 
   const handleLogPayment = async (method) => {
     if (!selectedHouse || !activeEstate || !effectiveUserId) return;
+    if (selectedHouse.isProcessedToday) return;
     setIsSubmitting(true);
     const amount = Math.abs(selectedHouse.balance);
     const paymentMethod = method === 'cash' ? 'Cash (Pending)' : 'M-PESA (Pending)';
 
     try {
-      const { error } = await supabase.from('transactions').insert([
-        {
-          user_id: effectiveUserId,
-          house_number: selectedHouse.id,
-          estate_name: activeEstate.name,
-          amount,
-          payment_method: paymentMethod,
-          collector_name: collectorName,
-          resulting_balance: selectedHouse.balance,
-        },
-      ]);
+      const newTransaction = {
+        user_id: effectiveUserId,
+        house_number: selectedHouse.id,
+        estate_name: activeEstate.name,
+        amount,
+        payment_method: paymentMethod,
+        collector_name: collectorName,
+        resulting_balance: selectedHouse.balance,
+      };
+      const { data, error } = await supabase.from('transactions').insert([newTransaction]).select();
       if (error) throw error;
 
+      // Update local state
+      setAllTransactions((prev) => (data ? [...data, ...prev] : prev));
+      setTodayTransactions((prev) => (data ? [...data, ...prev] : prev));
       setHouses((prev) =>
-        prev.map((h) => (h.id === selectedHouse.id ? { ...h, balance: 0 } : h))
+        prev.map((h) => (h.id === selectedHouse.id ? { ...h, balance: 0, isProcessedToday: true } : h))
       );
       setSelectedHouse(null);
       setShowIssueMenu(false);
@@ -272,7 +310,7 @@ export function useCollectorPortal(mode = 'field') {
     collectorAuth,
     estates,
     activeEstate,
-    setActiveEstate,
+    setActiveEstate: safeSetActiveEstate, // Use the safe version
     houses,
     allCollectors,
     collectorSummaries,

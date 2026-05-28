@@ -63,30 +63,41 @@ const CollectorPaymentSheet = ({
 
               {!showIssueMenu ? (
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => onLogPayment('cash')}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-base py-4 rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    Log Cash Payment
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => onLogPayment('mpesa')}
-                    className="w-full border-2 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-bold text-base py-4 rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    Log M-PESA
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onToggleIssueMenu}
-                    className="w-full flex items-center justify-center gap-2 bg-rose-500/10 border-2 border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold py-4 rounded-xl"
-                  >
-                    <AlertTriangle className="w-5 h-5" />
-                    Report Issue
-                  </button>
+                  {selectedHouse?.isProcessedToday ? (
+                    <div className="text-center py-6">
+                      <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        This house has already been processed today.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => onLogPayment('cash')}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-base py-4 rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        Log Cash Payment
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => onLogPayment('mpesa')}
+                        className="w-full border-2 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-bold text-base py-4 rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        Log M-PESA
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onToggleIssueMenu}
+                        className="w-full flex items-center justify-center gap-2 bg-rose-500/10 border-2 border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold py-4 rounded-xl"
+                      >
+                        <AlertTriangle className="w-5 h-5" />
+                        Report Issue
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={onClose}
@@ -98,20 +109,31 @@ const CollectorPaymentSheet = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <h3 className="text-rose-500 font-bold text-center mb-2 uppercase tracking-wider text-xs">
-                    Select issue type
-                  </h3>
-                  {['Locked Gate', 'Tenant Refused', 'Vacant'].map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => onReportIssue(label === 'Locked Gate' ? 'Locked Gate' : label === 'Tenant Refused' ? 'Tenant Refused' : 'Vacant')}
-                      className="w-full bg-gray-100 dark:bg-[#0f172a] border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 font-semibold py-3 rounded-xl"
-                    >
-                      {label === 'Locked Gate' ? 'Locked Gate / Inaccessible' : label === 'Tenant Refused' ? 'Tenant Refused' : 'House is Vacant'}
-                    </button>
-                  ))}
+                  {selectedHouse?.isProcessedToday ? (
+                    <div className="text-center py-6">
+                      <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        This house has already been processed today.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="text-rose-500 font-bold text-center mb-2 uppercase tracking-wider text-xs">
+                        Select issue type
+                      </h3>
+                      {['Locked Gate', 'Tenant Refused', 'Vacant'].map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => onReportIssue(label === 'Locked Gate' ? 'Locked Gate' : label === 'Tenant Refused' ? 'Tenant Refused' : 'Vacant')}
+                          className="w-full bg-gray-100 dark:bg-[#0f172a] border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 font-semibold py-3 rounded-xl"
+                        >
+                          {label === 'Locked Gate' ? 'Locked Gate / Inaccessible' : label === 'Tenant Refused' ? 'Tenant Refused' : 'House is Vacant'}
+                        </button>
+                      ))}
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={onToggleIssueMenu}

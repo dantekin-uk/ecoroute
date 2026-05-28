@@ -97,7 +97,7 @@ const AdminCollectorPortal = () => {
             color: 'text-blue-600 dark:text-blue-400',
           },
           {
-            label: 'Cash in hand',
+            label: 'Cash at Risk',
             value: `KES ${stats.cashInHand.toLocaleString()}`,
             sub: 'Pending cash approvals',
             icon: Wallet,

@@ -6,16 +6,34 @@ export function formatHouseId(tenant) {
     : tenant.block_number;
 }
 
-export function mapTenantsToHouses(tenants, estateId) {
+export function mapTenantsToHouses(tenants, estateId, transactions = []) {
+  // Get today's processed house IDs
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const processedHouseIds = new Set(
+    transactions
+      .filter((tx) => {
+        const txDate = new Date(tx.created_at);
+        txDate.setHours(0, 0, 0, 0);
+        return txDate.getTime() === today.getTime();
+      })
+      .map((tx) => tx.house_number)
+  );
+
   return tenants
     .filter((t) => t.estate_id === estateId)
-    .map((t) => ({
-      id: formatHouseId(t),
-      tenantId: t.id,
-      balance: Number(t.current_balance),
-      name: t.tenant_name,
-      rate: Number(t.monthly_rate),
-    }))
+    .map((t) => {
+      const houseId = formatHouseId(t);
+      const isProcessedToday = processedHouseIds.has(houseId);
+      return {
+        id: houseId,
+        tenantId: t.id,
+        balance: Number(t.current_balance),
+        name: t.tenant_name,
+        rate: Number(t.monthly_rate),
+        isProcessedToday,
+      };
+    })
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
 
@@ -45,7 +63,7 @@ export function computeCollectorStats(transactions, collectorName, tenantsForEst
     }
   });
 
-  const pendingDoors = tenantsForEstate.filter((h) => h.balance < 0).length;
+  const pendingDoors = tenantsForEstate.filter((h) => h.balance < 0 && !h.isProcessedToday).length;
   const totalDoors = tenantsForEstate.length;
   const doneDoors = totalDoors - pendingDoors;
   const routeProgress = totalDoors > 0 ? Math.round((doneDoors / totalDoors) * 100) : 0;

@@ -6,13 +6,42 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa-192x192.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link id="manifest-link" rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#059669" />
+    <meta id="theme-color" name="theme-color" content="#059669" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="EcoRoute" />
+    <meta id="apple-mobile-web-app-title" name="apple-mobile-web-app-title" content="EcoRoute" />
     <title>EcoRoute</title>
+    <script>
+      // Dynamically switch manifest and meta tags based on current route
+      function updateAppConfig() {
+        const path = window.location.pathname;
+        const manifestLink = document.getElementById('manifest-link');
+        const appleTitle = document.getElementById('apple-mobile-web-app-title');
+        const themeColor = document.getElementById('theme-color');
+        
+        const isCollectorApp = path.startsWith('/collector-login') || path.startsWith('/app');
+        
+        if (isCollectorApp) {
+          manifestLink.href = '/manifest.collector.json';
+          document.title = 'EcoRoute Collector';
+          if (appleTitle) appleTitle.content = 'Collector';
+          if (themeColor) themeColor.content = '#0B0F19';
+        } else {
+          manifestLink.href = '/manifest.json';
+          document.title = 'EcoRoute';
+          if (appleTitle) appleTitle.content = 'EcoRoute';
+          if (themeColor) themeColor.content = '#059669';
+        }
+      }
+      
+      // Make it available globally for React to call
+      window.updateAppConfig = updateAppConfig;
+      
+      // Run on initial load
+      updateAppConfig();
+    </script>
   </head>
   <body>
     <div id="root"></div>

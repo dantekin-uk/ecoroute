@@ -1,5 +1,5 @@
-import React, { Suspense, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import CollectorLogin from './pages/CollectorLogin';
@@ -41,9 +41,17 @@ const AuthenticatedLayout = ({ children }) => {
   );
 };
 
-function App() {
+function AppContent() {
   const { user, loading } = useAuth();
   const { activePalette } = useTheme(); // Get activePalette
+  const location = useLocation();
+
+  // Update app config (manifest, meta tags) when route changes
+  useEffect(() => {
+    if (window.updateAppConfig) {
+      window.updateAppConfig();
+    }
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -54,121 +62,127 @@ function App() {
   }
 
   return (
-    <Router>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors">
-          <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${activePalette.activeBorder}`}></div>
-        </div>
-      }>
-        <Routes>
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <SignUp />} />
-          <Route path="/collector-login" element={<CollectorLogin />} />
-          <Route 
-            path="/app" 
-            element={
-              <ErrorBoundary>
-                <CollectorDashboard />
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors">
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${activePalette.activeBorder}`}></div>
+      </div>
+    }>
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <SignUp />} />
+        <Route path="/collector-login" element={<CollectorLogin />} />
+        <Route 
+          path="/app" 
+          element={
+            <ErrorBoundary>
+              <CollectorDashboard />
+            </ErrorBoundary>
+          } 
+        />
+        <Route
+          path="/dashboard/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary> {/* Wrap AuthenticatedLayout with ErrorBoundary */}
+                <AuthenticatedLayout>
+                  <Dashboard />
+                </AuthenticatedLayout>
               </ErrorBoundary>
-            } 
-          />
-          <Route
-            path="/dashboard/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary> {/* Wrap AuthenticatedLayout with ErrorBoundary */}
-                  <AuthenticatedLayout>
-                    <Dashboard />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/estates/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <Estates />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/collections/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <Collections />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/collector/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <CollectorDashboard />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/team/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <TeamAndSecurity />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/expenses/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <Expenses />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/inventory/*"
-            element={
-              <PrivateRoute>
-                <ErrorBoundary>
-                  <AuthenticatedLayout>
-                    <Inventory />
-                  </AuthenticatedLayout>
-                </ErrorBoundary>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              user ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/estates/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <Estates />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/collections/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <Collections />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/collector/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <CollectorDashboard />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/team/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <TeamAndSecurity />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/expenses/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <Expenses />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/inventory/*"
+          element={
+            <PrivateRoute>
+              <ErrorBoundary>
+                <AuthenticatedLayout>
+                  <Inventory />
+                </AuthenticatedLayout>
+              </ErrorBoundary>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            user ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

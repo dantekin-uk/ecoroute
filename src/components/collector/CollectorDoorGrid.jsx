@@ -13,20 +13,22 @@ const CollectorDoorGrid = ({ houses, onHouseClick, columns = 3, compact = false 
   return (
     <div className={gridClass}>
       {houses.map((house) => {
-        const isPending = house.balance < 0;
+        const isPending = house.balance < 0 && !house.isProcessedToday;
+        const isProcessedToday = house.isProcessedToday;
         return (
           <motion.button
             type="button"
-            whileTap={{ scale: 0.95 }}
+            whileTap={isPending ? { scale: 0.95 } : {}}
             key={house.id}
             onClick={() => onHouseClick(house)}
+            disabled={!isPending}
             className={`
               ${compact ? 'aspect-[4/3] rounded-xl' : 'aspect-square rounded-2xl'}
               flex flex-col items-center justify-center relative overflow-hidden transition-all
               ${
                 isPending
-                  ? 'bg-rose-500/15 border-2 border-rose-500/40 hover:bg-rose-500/25 hover:border-rose-500/60'
-                  : 'bg-emerald-500/10 border border-emerald-500/25 opacity-70 hover:opacity-100'
+                  ? 'bg-rose-500/15 border-2 border-rose-500/40 hover:bg-rose-500/25 hover:border-rose-500/60 cursor-pointer'
+                  : 'bg-emerald-500/10 border border-emerald-500/25 opacity-70 hover:opacity-100 cursor-not-allowed'
               }
             `}
           >
