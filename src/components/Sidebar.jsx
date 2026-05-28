@@ -104,12 +104,28 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 shadow-2xl z-40 transition-all duration-300 ease-in-out transform overflow-visible
+        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 shadow-2xl z-[60] transition-all duration-300 ease-in-out transform overflow-y-auto overflow-x-visible scrollbar-small
           ${isOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full md:translate-x-0'}`}
+        style={{ scrollbarGutter: 'stable' }}
       >
+        <style dangerouslySetInnerHTML={{ __html: `
+          .scrollbar-small::-webkit-scrollbar {
+            width: 4px;
+          }
+          .scrollbar-small::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .scrollbar-small::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 10px;
+          }
+          .scrollbar-small::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+          }
+        `}} />
         <div className="flex flex-col h-full">
           {/* Branding — fixed at top */}
-          <div className={`h-20 flex-shrink-0 flex items-center pl-1 sm:pl-1 border-b border-gray-100 dark:border-gray-800 ${isOpen ? 'justify-start' : 'justify-center'}`}>
+          <div className={`h-20 sticky top-0 bg-white dark:bg-gray-900 flex-shrink-0 flex items-center pl-1 sm:pl-1 border-b border-gray-100 dark:border-gray-800 ${isOpen ? 'justify-start' : 'justify-center'} z-20`}>
             <img
               src="/pwa-512x512.png"
               alt="EcoRoute"
@@ -118,9 +134,11 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
 
           {/* Scrollable menu area */}
-          <div className="flex-1 overflow-y-auto overflow-x-visible relative">
+          <div
+            className="flex-1 relative"
+          >
           {/* Recent Pages Section */}
-          <div className={`py-4 mx-3 mb-2 mt-2 rounded-2xl ${activePalette.recentBg} border ${activePalette.recentBorder} transition-all duration-300 ${!isOpen && 'bg-transparent border-transparent'}`}>
+          <div className={`py-4 mx-3 mb-2 mt-2 rounded-2xl ${activePalette.recentBg} border ${activePalette.recentBorder} transition-all duration-300 ${!isOpen ? 'bg-transparent border-transparent' : ''}`}>
             {isOpen && <div className={`px-4 mb-3 text-[11px] font-bold ${activePalette.recentText} uppercase tracking-[0.2em] flex items-center gap-2`}><Clock size={12}/> Recent</div>}
             <div className="px-2 space-y-1">
               {recentPages.map((page) => (
@@ -132,12 +150,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                 >
                   <page.icon size={18} className="flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
                   {isOpen && <span className="ml-3 text-sm font-medium truncate">{page.name}</span>}
-                  {!isOpen && (
-                    <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[999999]">
-                      {page.name}
-                      <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45" />
-                    </div>
-                  )}
                 </Link>
               ))}
             </div>
@@ -172,19 +184,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                               ? `${activePalette.activeBg} ${activePalette.activeText} shadow-neon-border`
                               : `text-gray-500 dark:text-gray-400 ${activePalette.hoverText} hover:bg-gray-50 dark:hover:bg-gray-800/50`
                           }`}
-                          title={item.name}
                         >
                           {isActive && (
                             <div className={`absolute left-0 w-1 h-6 ${activePalette.activeBorder} rounded-r-full ${activePalette.activeShadow}`} />
                           )}
                           <item.icon size={20} className={`flex-shrink-0 transition-transform duration-300 group-hover:scale-110 ${isActive ? `${activePalette.activeText} drop-shadow-[0_0_5px_rgba(132,204,22,0.5)]` : ''}`} />
                           {isOpen && <span className={`ml-3 text-sm font-semibold truncate ${isActive ? activePalette.activeText : ''}`}>{item.name}</span>}
-                          {!isOpen && (
-                            <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-2xl z-[999999]">
-                              {item.name}
-                              <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45" />
-                            </div>
-                          )}
                         </Link>
                       );
                     })}

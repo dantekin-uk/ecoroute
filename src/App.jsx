@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import CollectorLogin from './pages/CollectorLogin';
-import { useAuth } from './AuthContext';
+import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/useTheme'; // Import useTheme
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';

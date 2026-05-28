@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../AuthContext'; // Corrected import path
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase'; // Import supabase for login logic
 import { useTheme } from '../context/useTheme';
 import { FiArrowRight, FiLoader } from 'react-icons/fi';

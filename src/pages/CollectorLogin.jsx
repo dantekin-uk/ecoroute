@@ -67,7 +67,8 @@ const CollectorLogin = () => {
         name: collectors.name,
         phone: collectors.phone,
         role: 'collector',
-        assigned_estates: [collectors.assigned_estate] 
+        assigned_estates: [collectors.assigned_estate],
+        user_id: collectors.user_id
       };
 
       localStorage.setItem('collector_auth', JSON.stringify(collectorSession));

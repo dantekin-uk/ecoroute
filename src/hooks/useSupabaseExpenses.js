@@ -2,16 +2,19 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { getDateRangeForFilter } from '../lib/dateRange';
 
-export function useSupabaseExpenses({ timeRange } = {}) {
+export function useSupabaseExpenses({ timeRange, userId } = {}) {
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tableMissing, setTableMissing] = useState(false);
 
   const fetchExpenses = useCallback(async () => {
+    if (!userId) return;
+
     setIsLoading(true);
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error?.code === 'PGRST205' || error?.code === '42P01') {
@@ -24,7 +27,7 @@ export function useSupabaseExpenses({ timeRange } = {}) {
       setExpenses(data || []);
     }
     setIsLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;

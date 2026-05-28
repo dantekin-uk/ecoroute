@@ -35,6 +35,7 @@ export const DashboardProvider = ({ children }) => {
       const { data: tenants, error: tenantsError } = await supabase
         .from('tenants')
         .select('*')
+        .eq('user_id', currentUser.id)
         .eq('is_active', true);
 
       if (tenantsError) throw tenantsError;
@@ -61,6 +62,7 @@ export const DashboardProvider = ({ children }) => {
       const { data: txs, error: txsError } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', currentUser.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
@@ -70,6 +72,7 @@ export const DashboardProvider = ({ children }) => {
       const { data: recentTxs, error: recentTxsError } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -90,7 +93,8 @@ export const DashboardProvider = ({ children }) => {
       let stockValue = 0;
       const { data: stockRows } = await supabase
         .from('consumables')
-        .select('quantity, critical_threshold, price_per_unit');
+        .select('quantity, critical_threshold, price_per_unit')
+        .eq('user_id', currentUser.id);
 
       if (stockRows) {
         stockRows.forEach((row) => {

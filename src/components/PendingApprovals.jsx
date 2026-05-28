@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 
 const PendingApprovals = () => {
   const [pendingTxs, setPendingTxs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
 
   const fetchPending = async () => {
+    if (!currentUser) return;
     try {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', currentUser.id)
         .like('payment_method', '%(Pending)%')
         .order('created_at', { ascending: false });
       
@@ -27,9 +31,16 @@ const PendingApprovals = () => {
   useEffect(() => {
     fetchPending();
 
+    if (!currentUser) return;
+
     const sub = supabase
       .channel('pending-approvals')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'transactions', 
+        filter: `user_id=eq.${currentUser.id}`
+      }, () => {
         fetchPending();
       })
       .subscribe();
@@ -37,9 +48,10 @@ const PendingApprovals = () => {
     return () => {
       supabase.removeChannel(sub);
     };
-  }, []);
+  }, [currentUser]);
 
   const handleApprove = async (tx) => {
+    if (!currentUser) return;
     try {
       // 1. Remove '(Pending)' from payment method
       const newMethod = tx.payment_method.replace(' (Pending)', '');
@@ -47,13 +59,13 @@ const PendingApprovals = () => {
       // 2. Fetch the tenant to update balance
       // Note: we assume house_number in tx matches tenant's block_number or block_number-door_number
       // But we need estate_id. MobileCollectorGrid logs 'estate_name', so we fetch estate_id first
-      const { data: estateData } = await supabase.from('estates').select('id').eq('name', tx.estate_name).single();
+      const { data: estateData } = await supabase.from('estates').select('id').eq('name', tx.estate_name).eq('user_id', currentUser.id).single();
       
       if (estateData) {
         // Look up tenant
         // In MobileCollectorGrid, selectedHouse.id was either block_number-door_number or block_number
         // We'll do a simple match using a custom RPC or fetch all tenants for the estate
-        const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id);
+        const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id).eq('user_id', currentUser.id);
         
         let tenantId = null;
         let currentBalance = 0;
@@ -73,20 +85,20 @@ const PendingApprovals = () => {
           // Add the payment to the tenant's balance (current_balance + amount)
           // Wait, if balance is negative (they owe money), logging a payment means current_balance + amount
           const newBalance = currentBalance + Number(tx.amount);
-          await supabase.from('tenants').update({ current_balance: newBalance }).eq('id', tenantId);
+          await supabase.from('tenants').update({ current_balance: newBalance }).eq('id', tenantId).eq('user_id', currentUser.id);
           
           // Also update transaction's resulting_balance to reflect true updated balance
           await supabase.from('transactions').update({ 
             payment_method: newMethod,
             resulting_balance: newBalance
-          }).eq('id', tx.id);
+          }).eq('id', tx.id).eq('user_id', currentUser.id);
         } else {
           // Tenant not found (unlikely), just update tx
-          await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', tx.id);
+          await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', tx.id).eq('user_id', currentUser.id);
         }
       } else {
          // Estate not found, just update tx
-         await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', tx.id);
+         await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', tx.id).eq('user_id', currentUser.id);
       }
       
     } catch (err) {
@@ -96,9 +108,9 @@ const PendingApprovals = () => {
   };
 
   const handleReject = async (txId) => {
-    if (!window.confirm('Are you sure you want to reject and delete this payment log?')) return;
+    if (!window.confirm('Are you sure you want to reject and delete this payment log?') || !currentUser) return;
     try {
-      await supabase.from('transactions').delete().eq('id', txId);
+      await supabase.from('transactions').delete().eq('id', txId).eq('user_id', currentUser.id);
     } catch (err) {
       console.error('Rejection error:', err);
       alert(`Failed to reject: ${err.message}`);

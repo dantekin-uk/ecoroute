@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
  
 import { useTheme } from '../context/useTheme';

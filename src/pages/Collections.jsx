@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, X, Loader2, Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import PageHeader from '../components/layout/PageHeader';
 import PageStatGrid from '../components/layout/PageStatGrid';
@@ -9,6 +10,7 @@ import PageStatCard from '../components/layout/PageStatCard';
 
 const Collections = () => {
   const { activePalette } = useTheme();
+  const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState('All');
   const [transactions, setTransactions] = useState([]);
@@ -22,27 +24,28 @@ const Collections = () => {
   const [estatesData, setEstatesData] = useState([]);
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchData();
     fetchEstates();
 
     // Set up real-time subscriptions
     const tenantsSubscription = supabase
       .channel('collections-tenants-changes')
-      .on('postgres_changes', { event: '*', table: 'tenants', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'tenants', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchData();
       })
       .subscribe();
 
     const transactionsSubscription = supabase
       .channel('collections-transactions-changes')
-      .on('postgres_changes', { event: '*', table: 'transactions', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'transactions', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchData();
       })
       .subscribe();
 
     const estatesSubscription = supabase
       .channel('collections-estates-changes')
-      .on('postgres_changes', { event: '*', table: 'estates', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'estates', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchEstates();
       })
       .subscribe();
@@ -52,10 +55,11 @@ const Collections = () => {
       supabase.removeChannel(transactionsSubscription);
       supabase.removeChannel(estatesSubscription);
     };
-  }, []);
+  }, [currentUser]);
 
   const fetchEstates = async () => {
-    const { data } = await supabase.from('estates').select('*');
+    if (!currentUser) return;
+    const { data } = await supabase.from('estates').select('*').eq('user_id', currentUser.id);
     if (data) {
       setEstatesData(data);
       if (data.length > 0 && !newPayment.estateId) {
@@ -65,6 +69,7 @@ const Collections = () => {
   };
 
   const fetchData = async () => {
+    if (!currentUser) return;
     setIsLoading(true);
     
     // 1. Fetch current active tenants balances and link with estates
@@ -75,7 +80,8 @@ const Collections = () => {
         estates (
           name
         )
-      `);
+      `)
+      .eq('user_id', currentUser.id);
 
     if (tenantsData) {
       setHouses(tenantsData.map(t => ({ 
@@ -89,7 +95,7 @@ const Collections = () => {
     }
 
     // 2. Fetch all historical transactions
-    const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+    const { data: txData } = await supabase.from('transactions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
     if (txData) {
       const actualPayments = txData.filter(tx => !tx.payment_method?.startsWith('Incident'));
       setTransactions(actualPayments.map(tx => ({
@@ -123,19 +129,20 @@ const Collections = () => {
   });
 
   const handleApprovePayment = async (txFullId, currentMethod) => {
+    if (!currentUser) return;
     try {
       const newMethod = currentMethod.replace(' (Pending)', '');
       
       // Fetch the transaction details first to get the amount, house, estate
-      const { data: txData } = await supabase.from('transactions').select('*').eq('id', txFullId).single();
+      const { data: txData } = await supabase.from('transactions').select('*').eq('id', txFullId).eq('user_id', currentUser.id).single();
       
       if (!txData) throw new Error('Transaction not found');
 
       // Fetch estate to get ID
-      const { data: estateData } = await supabase.from('estates').select('id').eq('name', txData.estate_name).single();
+      const { data: estateData } = await supabase.from('estates').select('id').eq('name', txData.estate_name).eq('user_id', currentUser.id).single();
       
       if (estateData) {
-        const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id);
+        const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id).eq('user_id', currentUser.id);
         let tenantId = null;
         let currentBalance = 0;
         
@@ -152,17 +159,17 @@ const Collections = () => {
         
         if (tenantId) {
           const newBalance = currentBalance + Number(txData.amount);
-          await supabase.from('tenants').update({ current_balance: newBalance }).eq('id', tenantId);
+          await supabase.from('tenants').update({ current_balance: newBalance }).eq('id', tenantId).eq('user_id', currentUser.id);
           
           await supabase.from('transactions').update({ 
             payment_method: newMethod,
             resulting_balance: newBalance
-          }).eq('id', txFullId);
+          }).eq('id', txFullId).eq('user_id', currentUser.id);
         } else {
-          await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', txFullId);
+          await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', txFullId).eq('user_id', currentUser.id);
         }
       } else {
-        await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', txFullId);
+        await supabase.from('transactions').update({ payment_method: newMethod }).eq('id', txFullId).eq('user_id', currentUser.id);
       }
       
       // The real-time subscription will refresh the data automatically
@@ -189,7 +196,7 @@ const Collections = () => {
 
   const handleLogPayment = async (e) => {
     e.preventDefault();
-    if (!newPayment.houseNumber || newPayment.amount === '' || !newPayment.estateId) return;
+    if (!newPayment.houseNumber || newPayment.amount === '' || !newPayment.estateId || !currentUser) return;
 
     setIsSubmitting(true);
     const paidAmount = Number(newPayment.amount);
@@ -212,7 +219,8 @@ const Collections = () => {
         const { error: updateError } = await supabase
           .from('tenants')
           .update({ current_balance: newBalance })
-          .eq('id', existingHouse.id);
+          .eq('id', existingHouse.id)
+          .eq('user_id', currentUser.id);
         
         if (updateError) throw updateError;
       } else {
@@ -224,6 +232,7 @@ const Collections = () => {
         const { error: insertError } = await supabase
           .from('tenants')
           .insert([{
+            user_id: currentUser.id,
             estate_id: newPayment.estateId,
             block_number: houseNum,
             tenant_name: 'Unregistered Occupant',
@@ -239,6 +248,7 @@ const Collections = () => {
       const { error: txError } = await supabase
         .from('transactions')
         .insert([{
+          user_id: currentUser.id,
           house_number: houseNum,
           estate_name: finalEstateName,
           amount: paidAmount,

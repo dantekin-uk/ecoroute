@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Search, Moon, Sun, Menu, X, User, LogOut, Settings, Bell } from 'lucide-react'; // Removed Palette icon
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/useTheme';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const Header = ({ onMenuClick, isMobileMenuOpen }) => {
   const { isDarkMode, toggleTheme } = useTheme();

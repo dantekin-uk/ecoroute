@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Building2, Users, AlertTriangle, ChevronDown, ChevronRight, MoreVertical, X, UploadCloud, Wand2, FileSpreadsheet, Trash2, Edit2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/useTheme';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import PageHeader from '../components/layout/PageHeader';
 import PageStatGrid from '../components/layout/PageStatGrid';
@@ -9,6 +10,7 @@ import PageStatCard from '../components/layout/PageStatCard';
 
 const Estates = () => {
   const { activePalette } = useTheme();
+  const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [importMode, setImportMode] = useState('single'); // 'single' | 'bulk'
@@ -57,9 +59,10 @@ const Estates = () => {
   }, [currentUser]);
 
   const fetchData = async () => {
+    if (!currentUser) return;
     setIsLoading(true);
-    const { data: estates } = await supabase.from('estates').select('*').order('created_at', { ascending: true });
-    const { data: tenants } = await supabase.from('tenants').select('*');
+    const { data: estates } = await supabase.from('estates').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+    const { data: tenants } = await supabase.from('tenants').select('*').eq('user_id', currentUser.id);
 
     if (estates) {
       const formattedData = estates.map(est => ({
@@ -86,10 +89,10 @@ const Estates = () => {
 
   // Handlers for deleting
   const handleDeleteTenant = async (estateId, tenantId) => {
-    if (window.confirm("Are you sure you want to remove this tenant? This will also remove their history.")) {
+    if (window.confirm("Are you sure you want to remove this tenant? This will also remove their history.") && currentUser) {
       setIsLoading(true);
       try {
-        const { error } = await supabase.from('tenants').delete().eq('id', tenantId);
+        const { error } = await supabase.from('tenants').delete().eq('id', tenantId).eq('user_id', currentUser.id);
         if (error) throw error;
         // Real-time will update, but we call fetchData for immediate feedback
         await fetchData();
@@ -103,15 +106,15 @@ const Estates = () => {
   };
 
   const handleDeleteEstate = async (estateId) => {
-    if (window.confirm("CRITICAL: Are you sure you want to delete this ENTIRE estate and ALL its tenants? This cannot be undone.")) {
+    if (window.confirm("CRITICAL: Are you sure you want to delete this ENTIRE estate and ALL its tenants? This cannot be undone.") && currentUser) {
       setIsLoading(true);
       try {
         // 1. Delete all tenants first (to avoid foreign key errors)
-        const { error: tError } = await supabase.from('tenants').delete().eq('estate_id', estateId);
+        const { error: tError } = await supabase.from('tenants').delete().eq('estate_id', estateId).eq('user_id', currentUser.id);
         if (tError) throw tError;
 
         // 2. Delete the estate
-        const { error: eError } = await supabase.from('estates').delete().eq('id', estateId);
+        const { error: eError } = await supabase.from('estates').delete().eq('id', estateId).eq('user_id', currentUser.id);
         if (eError) throw eError;
 
         await fetchData();
@@ -126,10 +129,10 @@ const Estates = () => {
 
   // Handlers for Adding Data
   const handleAddEstate = async () => {
-    if (!newEstateName.trim()) return;
+    if (!newEstateName.trim() || !currentUser) return;
     
     setIsLoading(true);
-    const { error } = await supabase.from('estates').insert([{ name: newEstateName }]);
+    const { error } = await supabase.from('estates').insert([{ name: newEstateName, user_id: currentUser.id }]);
     
     if (error) {
       console.error('Error adding estate:', error);
@@ -208,6 +211,7 @@ const Estates = () => {
         const monthlyRate = Number(rate) || 450;
         if (houseNumber) {
           tenants.push({
+            user_id: currentUser.id,
             estate_id: bulkEstateId,
             block_number: houseNumber.trim(),
             tenant_name: 'Occupant',
@@ -238,7 +242,7 @@ const Estates = () => {
 
   // Handlers for Smart Unit Generator (Direct to Supabase)
   const handleGenerateUnits = async () => {
-    if (!bulkEstateId) return alert('Please select a Target Estate first.');
+    if (!bulkEstateId || !currentUser) return alert('Please select a Target Estate first.');
     const start = parseInt(genStart);
     const end = parseInt(genEnd);
     const rate = Number(genRate) || 450;
@@ -252,6 +256,7 @@ const Estates = () => {
     for (let i = start; i <= end; i++) {
       const houseNumber = genPrefix ? `${genPrefix}${i}` : `${i}`;
       newTenants.push({
+        user_id: currentUser.id,
         estate_id: bulkEstateId,
         block_number: houseNumber,
         tenant_name: 'Empty Unit',

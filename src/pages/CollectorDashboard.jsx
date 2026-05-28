@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../AuthContext'; // Corrected import path
+import { useAuth } from '../context/AuthContext';
 import AdminCollectorPortal from '../components/collector/AdminCollectorPortal';
 import MobileCollectorGrid from '../components/MobileCollectorGrid';
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, X, Loader2, Receipt, TrendingDown, Calendar, Trash2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import { useSupabaseExpenses } from '../hooks/useSupabaseExpenses';
 import ExpensesSpendChart from '../components/ExpensesSpendChart';
@@ -21,7 +22,8 @@ const CATEGORY_COLORS = {
 
 const Expenses = () => {
   const { activePalette } = useTheme();
-  const { expenses, isLoading, tableMissing, totalAllTime, totalThisMonth } = useSupabaseExpenses();
+  const { currentUser } = useAuth();
+  const { expenses, isLoading, tableMissing, totalAllTime, totalThisMonth } = useSupabaseExpenses({ userId: currentUser?.id });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [estatesData, setEstatesData] = useState([]);
@@ -64,10 +66,11 @@ const Expenses = () => {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!newExpense.title || newExpense.amount === '') return;
+    if (!newExpense.title || newExpense.amount === '' || !currentUser) return;
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('expenses').insert([{
+        user_id: currentUser.id,
         title: newExpense.title.trim(),
         amount: Number(newExpense.amount),
         category: newExpense.category,
@@ -87,8 +90,8 @@ const Expenses = () => {
   };
 
   const handleDeleteExpense = async (id) => {
-    if (!window.confirm('Delete this expense record?')) return;
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (!window.confirm('Delete this expense record?') || !currentUser) return;
+    const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) alert(`Error deleting expense: ${error.message}`);
   };
 

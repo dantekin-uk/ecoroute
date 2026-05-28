@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, AlertTriangle, Users, Activity, CheckCircle2, Phone, Map, X, Plus, MessageSquare, Key, RefreshCcw, Trash2, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/useTheme';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import PageHeader from '../components/layout/PageHeader';
 import PageStatGrid from '../components/layout/PageStatGrid';
@@ -9,6 +10,7 @@ import PageStatCard from '../components/layout/PageStatCard';
 
 const TeamAndSecurity = () => {
   const { activePalette } = useTheme();
+  const { currentUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCollector, setNewCollector] = useState({ name: '', phone: '', estate: '' });
   const [generatedPin, setGeneratedPin] = useState(null);
@@ -19,19 +21,20 @@ const TeamAndSecurity = () => {
   const [smsStatus, setSmsStatus] = useState({ id: null, loading: false, success: false, error: null });
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchIncidents();
     fetchCollectorsAndEstates();
 
     const incidentSub = supabase
       .channel('incidents-channel')
-      .on('postgres_changes', { event: '*', table: 'transactions', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'transactions', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchIncidents();
       })
       .subscribe();
 
     const collectorsSub = supabase
       .channel('collectors-channel')
-      .on('postgres_changes', { event: '*', table: 'collectors', schema: 'public' }, () => {
+      .on('postgres_changes', { event: '*', table: 'collectors', schema: 'public', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchCollectorsAndEstates();
       })
       .subscribe();
@@ -40,21 +43,22 @@ const TeamAndSecurity = () => {
       supabase.removeChannel(incidentSub);
       supabase.removeChannel(collectorsSub);
     };
-  }, []);
+  }, [currentUser]);
 
   const fetchCollectorsAndEstates = async () => {
+    if (!currentUser) return;
     try {
       // 1. Fetch Estates for the dropdown
-      const { data: estatesData } = await supabase.from('estates').select('*');
+      const { data: estatesData } = await supabase.from('estates').select('*').eq('user_id', currentUser.id);
       if (estatesData) setEstates(estatesData);
 
       // 2. Fetch Collectors and calculate their live cash
-      const { data: collectorsData, error: collectorsError } = await supabase.from('collectors').select('*').order('created_at', { ascending: false });
+      const { data: collectorsData, error: collectorsError } = await supabase.from('collectors').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
       if (collectorsError && collectorsError.code !== '42P01') throw collectorsError; // Ignore if table doesn't exist yet
       
       if (collectorsData) {
         // Fetch all transactions to calculate cash
-        const { data: txData } = await supabase.from('transactions').select('*').like('payment_method', 'Cash%');
+        const { data: txData } = await supabase.from('transactions').select('*').eq('user_id', currentUser.id).like('payment_method', 'Cash%');
         
         const enhancedCollectors = collectorsData.map(c => {
           const collectorCash = (txData || [])
@@ -78,10 +82,12 @@ const TeamAndSecurity = () => {
   };
 
   const fetchIncidents = async () => {
+    if (!currentUser) return;
     try {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', currentUser.id)
         .like('payment_method', 'Incident:%')
         .order('created_at', { ascending: false });
 
@@ -93,16 +99,17 @@ const TeamAndSecurity = () => {
   };
 
   const handleBlastSMS = async (incident) => {
+    if (!currentUser) return;
     setSmsStatus({ id: incident.id, loading: true, success: false, error: null });
     
     try {
       // 1. Find the estate ID first
-      const { data: estateData } = await supabase.from('estates').select('id').eq('name', incident.estate_name).single();
+      const { data: estateData } = await supabase.from('estates').select('id').eq('name', incident.estate_name).eq('user_id', currentUser.id).single();
       
       if (!estateData) throw new Error('Estate not found');
 
       // 2. Find the tenant and their phone number
-      const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id);
+      const { data: tenants } = await supabase.from('tenants').select('*').eq('estate_id', estateData.id).eq('user_id', currentUser.id);
       
       const tenant = tenants?.find(t => {
         const hId = t.door_number ? `${t.block_number}-${t.door_number}` : t.block_number;
@@ -131,8 +138,9 @@ const TeamAndSecurity = () => {
   };
 
   const handleResolveIncident = async (id) => {
+    if (!currentUser) return;
     try {
-      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) throw error;
       fetchIncidents();
     } catch (err) {
@@ -141,10 +149,11 @@ const TeamAndSecurity = () => {
   };
 
   const handleClearAllIncidents = async () => {
+    if (!currentUser) return;
     if (!window.confirm('Are you sure you want to clear ALL live incidents? This cannot be undone.')) return;
     try {
       const ids = incidents.map(i => i.id);
-      const { error } = await supabase.from('transactions').delete().in('id', ids);
+      const { error } = await supabase.from('transactions').delete().in('id', ids).eq('user_id', currentUser.id);
       if (error) throw error;
       fetchIncidents();
     } catch (err) {
@@ -165,6 +174,7 @@ const TeamAndSecurity = () => {
 
   const handleGeneratePin = async (e) => {
     e.preventDefault();
+    if (!currentUser) return;
     setIsSubmitting(true);
     
     // Normalize phone number to +254 format
@@ -193,6 +203,7 @@ const TeamAndSecurity = () => {
       const { error } = await supabase
         .from('collectors')
         .insert([{
+          user_id: currentUser.id,
           name: newCollector.name,
           phone: normalizedPhone,
           assigned_estate: newCollector.estate,
@@ -202,7 +213,7 @@ const TeamAndSecurity = () => {
 
       if (error) {
         if (error.code === '42P01') {
-          console.error("The 'collectors' table does not exist in Supabase yet. Please create it with columns: id, created_at, name, phone, assigned_estate, pin, status.");
+          console.error("The 'collectors' table does not exist in Supabase yet. Please create it with columns: id, created_at, name, phone, assigned_estate, pin, status, user_id.");
           alert("Database configuration missing: Please create the 'collectors' table in Supabase.");
           setIsSubmitting(false);
           return;
@@ -221,6 +232,7 @@ const TeamAndSecurity = () => {
   };
 
   const handleResetPin = async (collector) => {
+    if (!currentUser) return;
     const newPin = Math.floor(1000 + Math.random() * 9000).toString();
     if (window.confirm(`Are you sure you want to reset the PIN for ${collector.name}? A new 4-digit PIN will be generated.`)) {
       try {
@@ -230,7 +242,8 @@ const TeamAndSecurity = () => {
             pin: newPin,
             status: 'Pending First Login' // Reset status so they have to login again
           })
-          .eq('id', collector.id);
+          .eq('id', collector.id)
+          .eq('user_id', currentUser.id);
 
         if (error) throw error;
         alert(`New PIN for ${collector.name} is: ${newPin}. Please share this with them.`);
@@ -543,10 +556,12 @@ const TeamAndSecurity = () => {
                       </button>
                       <button
                         onClick={async () => {
+                          if (!currentUser) return;
                           if (window.confirm(`Are you sure you want to permanently delete collector ${collector.name}?`)) {
                             try {
-                              const { error } = await supabase.from('collectors').delete().eq('id', collector.id);
+                              const { error } = await supabase.from('collectors').delete().eq('id', collector.id).eq('user_id', currentUser.id);
                               if (error) throw error;
+                              fetchCollectorsAndEstates();
                             } catch (err) {
                               alert(`Error deleting collector: ${err.message}`);
                             }

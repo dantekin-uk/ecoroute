@@ -3,29 +3,34 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useAuth } from '../context/AuthContext';
 import { useGlobalFilter } from '../context/FilterContext';
 import { getDateRangeForFilter } from '../lib/dateRange';
 
 const CollectorLeaderboard = () => {
+  const { currentUser } = useAuth();
   const { timeRange } = useGlobalFilter();
   const [collectors, setCollectors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
   const fetchLeaderboardData = useCallback(async () => {
+    if (!currentUser) return;
     setFetchError(null);
     try {
       const { startDate, endDate } = getDateRangeForFilter(timeRange);
 
       const { data: collectorsData, error: collectorsError } = await supabase
         .from('collectors')
-        .select('id, name, status, assigned_estate');
+        .select('id, name, status, assigned_estate')
+        .eq('user_id', currentUser.id);
 
       if (collectorsError && collectorsError.code !== '42P01') throw collectorsError;
 
       const { data: txs, error } = await supabase
         .from('transactions')
         .select('amount, collector_name, payment_method, created_at')
+        .eq('user_id', currentUser.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
 
@@ -102,22 +107,23 @@ const CollectorLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange]);
+  }, [timeRange, currentUser]);
 
   useEffect(() => {
+    if (!currentUser) return;
     setIsLoading(true);
     fetchLeaderboardData();
 
     const txSubscription = supabase
       .channel('leaderboard-transactions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchLeaderboardData();
       })
       .subscribe();
 
     const collectorSubscription = supabase
       .channel('leaderboard-collectors')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors', filter: `user_id=eq.${currentUser.id}` }, () => {
         fetchLeaderboardData();
       })
       .subscribe();
@@ -126,7 +132,7 @@ const CollectorLeaderboard = () => {
       supabase.removeChannel(txSubscription);
       supabase.removeChannel(collectorSubscription);
     };
-  }, [fetchLeaderboardData]);
+  }, [fetchLeaderboardData, currentUser]);
 
   const getRankBadge = (rank) => {
     const badges = {

@@ -32,6 +32,7 @@ const emptyAsset = {
 
 const Inventory = () => {
   const { activePalette } = useTheme();
+  const { currentUser } = useAuth();
   const {
     consumables,
     assets,
@@ -108,10 +109,11 @@ const Inventory = () => {
 
   const handleAddConsumable = async (e) => {
     e.preventDefault();
-    if (!newConsumable.name.trim()) return;
+    if (!newConsumable.name.trim() || !currentUser) return;
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('consumables').insert({
+        user_id: currentUser.id,
         name: newConsumable.name.trim(),
         quantity: Number(newConsumable.quantity) || 0,
         critical_threshold: Number(newConsumable.critical_threshold) || 0,
@@ -129,10 +131,11 @@ const Inventory = () => {
 
   const handleAddAsset = async (e) => {
     e.preventDefault();
-    if (!newAsset.name.trim()) return;
+    if (!newAsset.name.trim() || !currentUser) return;
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('fixed_assets').insert({
+        user_id: currentUser.id,
         name: newAsset.name.trim(),
         condition: newAsset.condition,
         assigned_to: newAsset.assigned_to.trim() || null,
@@ -149,6 +152,7 @@ const Inventory = () => {
 
   const handleDispense = async (e) => {
     e.preventDefault();
+    if (!currentUser) return;
     const collectorName = collectors.length > 0 ? newDispense.collector : collectorManual.trim();
     const estate = resolveEstate(newDispense.estate_id);
 
@@ -174,11 +178,13 @@ const Inventory = () => {
         const { error: updateError } = await supabase
           .from('consumables')
           .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
-          .eq('id', itemToUpdate.id);
+          .eq('id', itemToUpdate.id)
+          .eq('user_id', currentUser.id);
         if (updateError) throw updateError;
       }
 
       const payload = {
+        user_id: currentUser.id,
         collector: collectorName,
         estate_id: estate.id,
         estate_name: estate.name,
@@ -191,7 +197,7 @@ const Inventory = () => {
 
       if (logError?.message?.includes('estate')) {
         const { estate_id, estate_name, ...legacy } = payload;
-        ({ error: logError } = await supabase.from('dispense_logs').insert(legacy));
+        ({ error: logError } = await supabase.from('dispense_logs').insert({...legacy, user_id: currentUser.id}));
       }
 
       if (logError) throw logError;
@@ -204,14 +210,14 @@ const Inventory = () => {
   };
 
   const handleDeleteConsumable = async (id, name) => {
-    if (!window.confirm(`Remove "${name}" from your stock list?`)) return;
-    const { error } = await supabase.from('consumables').delete().eq('id', id);
+    if (!window.confirm(`Remove "${name}" from your stock list?`) || !currentUser) return;
+    const { error } = await supabase.from('consumables').delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) alert(`Error: ${error.message}`);
   };
 
   const handleDeleteAsset = async (id, name) => {
-    if (!window.confirm(`Remove asset "${name}"?`)) return;
-    const { error } = await supabase.from('fixed_assets').delete().eq('id', id);
+    if (!window.confirm(`Remove asset "${name}"?`) || !currentUser) return;
+    const { error } = await supabase.from('fixed_assets').delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) alert(`Error: ${error.message}`);
   };
 

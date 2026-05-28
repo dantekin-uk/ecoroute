@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useContext } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
-import { AuthContext } from '../context/AuthContextBase';
+import { useAuth } from '../context/AuthContext';
 import { mapTenantsToHouses, computeCollectorStats } from '../lib/collectorPortalUtils';
 
 /**
@@ -8,7 +8,7 @@ import { mapTenantsToHouses, computeCollectorStats } from '../lib/collectorPorta
  * @param {'admin'|'field'} mode — admin sees all collectors/estates; field is scoped to login.
  */
 export function useCollectorPortal(mode = 'field') {
-  const { currentUser } = useContext(AuthContext) || {};
+  const { currentUser } = useAuth();
   const isAdminMode = mode === 'admin' || (!!currentUser && mode === 'field');
 
   const collectorAuthStr = typeof window !== 'undefined' ? localStorage.getItem('collector_auth') : null;
@@ -30,29 +30,38 @@ export function useCollectorPortal(mode = 'field') {
     ? collectorAuth.name
     : selectedCollectorName;
 
+  // Determine the correct user_id to use
+  const effectiveUserId = isDedicatedCollector ? collectorAuth?.user_id : currentUser?.id;
+
   const loadCollectors = useCallback(async () => {
+    if (!effectiveUserId) return;
     const { data } = await supabase
       .from('collectors')
-      .select('id, name, phone, status, assigned_estate');
+      .select('id, name, phone, status, assigned_estate')
+      .eq('user_id', effectiveUserId);
     if (data) setAllCollectors(data);
-  }, []);
+  }, [effectiveUserId]);
 
   const fetchTodayTransactions = useCallback(async () => {
+    if (!effectiveUserId) return;
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const { data: txs } = await supabase
       .from('transactions')
       .select('*')
+      .eq('user_id', effectiveUserId)
       .gte('created_at', startOfDay.toISOString())
       .order('created_at', { ascending: false });
     setTodayTransactions(txs || []);
-  }, []);
+  }, [effectiveUserId]);
 
   const fetchPortalData = useCallback(async () => {
+    if (!effectiveUserId) return;
     try {
       const { data: rawEstates, error: estatesError } = await supabase
         .from('estates')
         .select('*')
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: true });
       if (estatesError) throw estatesError;
 
@@ -63,6 +72,7 @@ export function useCollectorPortal(mode = 'field') {
           .from('collectors')
           .select('assigned_estate')
           .eq('id', collectorAuth.id)
+          .eq('user_id', effectiveUserId)
           .single();
 
         if (collectorDb?.assigned_estate) {
@@ -85,20 +95,20 @@ export function useCollectorPortal(mode = 'field') {
     } finally {
       setIsLoading(false);
     }
-  }, [isDedicatedCollector, collectorAuth?.id, fetchTodayTransactions]);
+  }, [isDedicatedCollector, collectorAuth?.id, fetchTodayTransactions, effectiveUserId]);
 
   const loadHousesForEstate = useCallback(async (estateId) => {
-    if (!estateId) {
+    if (!estateId || !effectiveUserId) {
       setHouses([]);
       return;
     }
-    const { data: tenantsData, error } = await supabase.from('tenants').select('*');
+    const { data: tenantsData, error } = await supabase.from('tenants').select('*').eq('user_id', effectiveUserId);
     if (error) {
       console.error(error);
       return;
     }
     setHouses(mapTenantsToHouses(tenantsData || [], estateId));
-  }, []);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     if (isAdminMode) loadCollectors();
@@ -122,20 +132,20 @@ export function useCollectorPortal(mode = 'field') {
 
     const channel = supabase
       .channel(`collector-portal-${mode}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants', filter: effectiveUserId ? `user_id=eq.${effectiveUserId}` : '' }, () => {
         if (activeEstate?.id) loadHousesForEstate(activeEstate.id);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: effectiveUserId ? `user_id=eq.${effectiveUserId}` : '' }, () => {
         fetchTodayTransactions();
         if (activeEstate?.id) loadHousesForEstate(activeEstate.id);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'collectors', filter: effectiveUserId ? `user_id=eq.${effectiveUserId}` : '' }, () => {
         if (isAdminMode) loadCollectors();
       })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [mode, fetchPortalData, isAdminMode, loadCollectors, loadHousesForEstate, fetchTodayTransactions, activeEstate?.id]);
+  }, [mode, fetchPortalData, isAdminMode, loadCollectors, loadHousesForEstate, fetchTodayTransactions, activeEstate?.id, effectiveUserId]);
 
   useEffect(() => {
     if (activeEstate?.id) {
@@ -196,11 +206,12 @@ export function useCollectorPortal(mode = 'field') {
   };
 
   const handleReportIssue = async (issueType) => {
-    if (!selectedHouse || !activeEstate) return;
+    if (!selectedHouse || !activeEstate || !effectiveUserId) return;
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('transactions').insert([
         {
+          user_id: effectiveUserId,
           house_number: selectedHouse.id,
           estate_name: activeEstate.name,
           amount: 0,
@@ -219,7 +230,7 @@ export function useCollectorPortal(mode = 'field') {
   };
 
   const handleLogPayment = async (method) => {
-    if (!selectedHouse || !activeEstate) return;
+    if (!selectedHouse || !activeEstate || !effectiveUserId) return;
     setIsSubmitting(true);
     const amount = Math.abs(selectedHouse.balance);
     const paymentMethod = method === 'cash' ? 'Cash (Pending)' : 'M-PESA (Pending)';
@@ -227,6 +238,7 @@ export function useCollectorPortal(mode = 'field') {
     try {
       const { error } = await supabase.from('transactions').insert([
         {
+          user_id: effectiveUserId,
           house_number: selectedHouse.id,
           estate_name: activeEstate.name,
           amount,

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { AuthContext } from './AuthContextBase.js';
+import { useAuth } from './useAuth.js';
+
+export { useAuth, AuthContext };
 
 export default function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -21,6 +24,10 @@ export default function AuthProvider({ children }) {
   }
 
   function logout() {
+    return supabase.auth.signOut();
+  }
+
+  function signOut() {
     return supabase.auth.signOut();
   }
 
@@ -55,9 +62,12 @@ export default function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    user: currentUser,
+    loading,
     signup,
     login,
     logout,
+    signOut,
     resetPassword,
     updateEmail,
     updatePassword
@@ -65,7 +75,7 @@ export default function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
