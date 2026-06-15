@@ -8,3 +8,4 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+//https://pjlttfbgrhqjgucksvof.supabase.co/auth/v1/callback
