@@ -1,0 +1,8 @@
+[project]
+project_id = "your-project-id"
+
+[functions.mpesa-stk-push]
+verify_jwt = true
+
+[functions.mpesa-webhook]
+verify_jwt = false

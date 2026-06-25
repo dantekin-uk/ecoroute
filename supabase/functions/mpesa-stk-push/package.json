@@ -1,0 +1,8 @@
+{
+  "name": "mpesa-stk-push",
+  "version": "1.0.0",
+  "dependencies": {
+    "https://deno.land/x/supabase_functions@v0.3.0/mod.ts"
+  },
+  "importMap": "../import_map.json"
+}

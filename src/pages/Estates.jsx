@@ -44,6 +44,11 @@ const Estates = () => {
   const [genEnd, setGenEnd] = useState('60');
   const [genRate, setGenRate] = useState('450');
 
+  // Payment Form State
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Fetch all data
   const fetchData = async () => {
     if (!currentUser) return;
@@ -378,6 +383,27 @@ const Estates = () => {
   const openTenantDetail = (tenant) => {
     setSelectedTenant(tenant);
     setIsTenantDetailModalOpen(true);
+    // Set initial payment values
+    setPaymentPhone(tenant.phone !== "N/A" ? tenant.phone : "");
+    setPaymentAmount(String(Math.abs(tenant.balance || 0)));
+  };
+
+  // Handle M-Pesa Payment
+  const handlePayment = async () => {
+    if (!selectedTenant || !paymentPhone || !paymentAmount) {
+      alert("Please fill in all payment details");
+      return;
+    }
+    setIsProcessingPayment(true);
+    try {
+      // We'll implement this later when we set up Supabase Functions
+      alert("Payment initiation will be available once Supabase Functions are deployed!");
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Failed to initiate payment. Please try again.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   // Open Edit Tenant Modal
@@ -1195,12 +1221,51 @@ const Estates = () => {
               </div>
 
               <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+                {/* M-Pesa Payment Form */}
+                <div className="mb-6 bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <DollarSign size={16} />
+                    Pay via M-Pesa
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+                      <input
+                        type="tel"
+                        placeholder="+254700123456"
+                        value={paymentPhone}
+                        onChange={(e) => setPaymentPhone(e.target.value)}
+                        className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 ${activePalette.focusRing} transition-all duration-200`}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (KES)</label>
+                      <input
+                        type="number"
+                        placeholder="Enter amount to pay"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 ${activePalette.focusRing} transition-all duration-200`}
+                      />
+                    </div>
+                    <button
+                      onClick={handlePayment}
+                      disabled={isProcessingPayment}
+                      className={`w-full px-4 py-3 bg-gradient-to-r ${activePalette.gradientFrom} ${activePalette.gradientTo} text-white rounded-xl font-medium shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
+                    >
+                      {isProcessingPayment && <Loader2 size={18} className="animate-spin" />}
+                      <DollarSign size={18} />
+                      {isProcessingPayment ? "Processing Payment..." : "Pay via M-Pesa"}
+                    </button>
+                  </div>
+                </div>
+                {/* Edit Tenant Button */}
                 <button 
                   onClick={() => {
                     openEditTenant(selectedTenant);
                     setIsTenantDetailModalOpen(false);
                   }}
-                  className={`w-full px-4 py-3 bg-gradient-to-r ${activePalette.gradientFrom} ${activePalette.gradientTo} text-white rounded-xl font-medium shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2`}
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2"
                 >
                   <Edit2 size={18} />
                   Edit Tenant Details
